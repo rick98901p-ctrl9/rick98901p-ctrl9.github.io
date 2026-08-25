@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="dark">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+<title>GeoAlerta</title>
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icon-192.png" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<meta name="theme-color" content="#0a84ff" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GeoAlerta" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  html, body { width: 100%; height: 100%; overflow: hidden; }
+
+  /* ---------- Tema (claro/escuro) ---------- */
+  
+  :root, [data-theme="dark"] {
+    --bg-app: #000000;
+    --bg-sidebar: rgba(28,28,30,0.88);
+    --bg-card: #2c2c2e;
+    --bg-card-hover: #3a3a3c;
+    --bg-input: rgba(28,28,30,0.85);
+    --border: #3a3a3c;
+    --border-soft: #2c2c2e;
+    --text-primary: #ffffff;
+    --text-secondary: #8e8e93;
+    --text-tertiary: #636366;
+    --accent: #0a84ff;
+    --danger: #ff453a;
+    --success: #30d158;
+    --shadow: rgba(0,0,0,0.55);
+    --map-veil: rgba(0,0,0,0.18);
+  }
+
+  [data-theme="light"] {
+    --bg-app: #f5f5f7;
+    --bg-sidebar: rgba(255,255,255,0.90);
+    --bg-card: #ffffff;
+    --bg-card-hover: #f2f2f7;
+    --bg-input: rgba(255,255,255,0.88);
+    --border: #d1d1d6;
+    --border-soft: #e5e5ea;
+    --text-primary: #1c1c1e;
+    --text-secondary: #636366;
+    --text-tertiary: #8e8e93;
+    --accent: #0a84ff;
+    --danger: #ff3b30;
+    --success: #34c759;
+    --shadow: rgba(0,0,0,0.18);
+    --map-veil: rgba(255,255,255,0.12);
+  }
+
+  .report-cta,
+  .action-btn-full.btn-primary {
+    border-radius: 12px !important;
+  }
+
+  .menu-item,
+  .result-card,
+  .action-btn-full.btn-secondary,
+  .modal-content,
+  .address-preview {
+    border-radius: 14px !important;
+  }
+
+  .search-bar {
+    border-radius: 12px !important;
+  }
+
+  .sidebar-title-row h1 {
+    letter-spacing: -.02em;
+    font-weight: 700;
+  }
+
+
+  body { background-color: var(--bg-app); color: var(--text-primary); }
+
+  .icon { width: 18px; height: 18px; display: block; stroke: currentColor; fill: none; flex-shrink: 0; }
+  .icon-sm { width: 14px; height: 14px; }
+  .icon-lg { width: 22px; height: 22px; }
+
+  /* ---------- Layout geral ---------- */
+  .app-shell { display: flex; width: 100%; height: 100%; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar {
+    width: 340px;
+    min-width: 340px;
+    height: 100%;
+    background-color: var(--bg-sidebar);
+    backdrop-filter: blur(14px);
+    border-right: 0.5px solid var(--border-soft);
+    display: flex;
+    flex-direction: column;
+    z-index: 900;
+    transition: margin-left 0.28s cubic-bezier(0.25,1,0.5,1);
+  }
+  .sidebar.collapsed { margin-left: -340px; }
+
+  .sidebar-header { padding: 16px 18px 10px 18px; }
+  .sidebar-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
+  .app-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .sidebar-title-row h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
+  .app-subtitle { font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
+  .icon-btn {
+    width: 30px; height: 30px; border-radius: 50%;
+    background: transparent; border: 0.5px solid var(--border);
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .icon-btn:active { background-color: var(--bg-card-hover); }
+
+  .search-bar {
+    display: flex; align-items: center;
+    background-color: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 9px 12px;
+    color: var(--text-secondary);
+  }
+  .search-bar:focus-within { border-color: var(--accent); }
+  .search-bar input {
+    flex: 1; background: transparent; border: none; outline: none;
+    color: var(--text-primary); font-size: 14.5px; margin-left: 9px;
+  }
+  .search-bar input::placeholder { color: var(--text-tertiary); }
+  .search-spinner {
+    display: none; width: 14px; height: 14px;
+    border: 2px solid var(--border); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .report-cta {
+    margin-top: 12px; width: 100%;
+    background-color: var(--accent); color: #fff;
+    border: none; border-radius: 10px; padding: 11px;
+    font-size: 14px; font-weight: 600;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    cursor: pointer;
+  }
+  .report-cta:active { opacity: 0.85; }
+  .report-cta.picking { background-color: var(--danger); }
+
+  .sidebar-scroll { flex: 1; overflow-y: auto; padding: 6px 18px 18px 18px; }
+  .sidebar-scroll::-webkit-scrollbar { width: 5px; }
+  .sidebar-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  .sidebar-footer {
+    padding: 12px 18px 16px 18px;
+    border-top: 0.5px solid var(--border-soft);
+    font-size: 11px; color: var(--text-tertiary);
+  }
+
+  /* ---------- Seções / listas ---------- */
+  .menu-section-label {
+    font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em;
+    color: var(--text-tertiary); margin: 14px 2px 8px 2px;
+  }
+  .menu-section-label:first-child { margin-top: 4px; }
+
+  .menu-list { display: flex; flex-direction: column; gap: 6px; }
+  .menu-item {
+    display: flex; align-items: center; gap: 12px;
+    background-color: var(--bg-card);
+    border: 0.5px solid var(--border-soft);
+    border-radius: 12px;
+    padding: 10px 12px;
+    cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .menu-item:active, .menu-item.active { background-color: var(--bg-card-hover); }
+  .menu-item.active { border-color: var(--accent); }
+  .menu-item-icon {
+    width: 32px; height: 32px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .menu-item span { font-size: 14.5px; font-weight: 500; }
+  .menu-item-count {
+    margin-left: auto; background-color: var(--bg-card-hover); color: var(--text-secondary);
+    font-size: 11.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+  }
+  .menu-item-chevron { margin-left: auto; color: var(--text-tertiary); }
+  .menu-item-count + .menu-item-chevron { margin-left: 8px; }
+
+  .back-row {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 12px; cursor: pointer;
+  }
+  .back-row .icon-btn { width: 26px; height: 26px; }
+  .back-row-title { font-size: 15px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+
+  .section-note { font-size: 12px; color: var(--text-tertiary); margin-bottom: 12px; line-height: 1.4; }
+
+  .results-list { display: flex; flex-direction: column; gap: 8px; }
+  .result-card {
+    display: flex; align-items: center;
+    background-color: var(--bg-card);
+    border: 0.5px solid var(--border-soft);
+    border-radius: 12px; padding: 10px; cursor: pointer;
+    transition: background-color 0.15s;
+  }
+  .result-card:active { background-color: var(--bg-card-hover); }
+  .result-icon {
+    width: 36px; height: 36px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    margin-right: 11px; flex-shrink: 0;
+  }
+  .result-text { flex: 1; overflow: hidden; }
+  .result-title { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .result-subtitle { font-size: 12.5px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-top: 2px; }
+  .result-distance { font-size: 11.5px; color: var(--accent); font-weight: 600; margin-top: 3px; }
+  .result-chevron { color: var(--text-tertiary); margin-left: 6px; flex-shrink: 0; }
+
+  .empty-state { color: var(--text-secondary); font-size: 13.5px; text-align: center; padding: 26px 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
+
+  /* ---------- Painel de detalhe ---------- */
+  .detail-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 5px 10px; border-radius: 999px; font-size: 12.5px; font-weight: 700;
+    margin-bottom: 12px;
+  }
+  .detail-title { font-size: 18px; font-weight: 700; margin-bottom: 14px; line-height: 1.3; }
+  .detail-row {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 0; border-bottom: 0.5px solid var(--border-soft);
+  }
+  .detail-row:last-of-type { border-bottom: none; }
+  .detail-row-icon { color: var(--text-tertiary); margin-top: 1px; flex-shrink: 0; }
+  .detail-row-label { font-size: 11px; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 600; }
+  .detail-row-value { font-size: 14px; font-weight: 500; margin-top: 2px; }
+
+  .action-btn-full {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; border-radius: 10px; padding: 11px; font-size: 14px; font-weight: 600;
+    margin-top: 10px; cursor: pointer; border: none;
+  }
+  .btn-primary { background-color: var(--accent); color: #fff; }
+  .btn-secondary { background-color: var(--bg-card); color: var(--text-primary); border: 1px solid var(--border); }
+  .btn-danger { background-color: transparent; color: var(--danger); border: 1px solid var(--danger); }
+  .detail-actions { margin-top: 16px; }
+
+  /* ---------- Mapa ---------- */
+  .map-wrap { position: relative; flex: 1; height: 100%; }
+  #map { width: 100%; height: 100%; z-index: 1; cursor: grab; }
+  #map.picking-mode { cursor: crosshair; }
+
+  .sidebar-reopen-btn {
+    position: absolute; top: 16px; left: 16px; z-index: 950;
+    width: 34px; height: 34px; border-radius: 8px;
+    background-color: var(--bg-sidebar); backdrop-filter: blur(10px);
+    border: 0.5px solid var(--border); color: var(--text-secondary);
+    display: none; align-items: center; justify-content: center; cursor: pointer;
+    box-shadow: 0 2px 8px var(--shadow);
+  }
+
+  .picking-banner {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 960; background-color: var(--danger); color: #fff;
+    padding: 10px 18px; border-radius: 999px; font-size: 13.5px; font-weight: 600;
+    display: none; align-items: center; gap: 8px; box-shadow: 0 4px 14px var(--shadow);
+    white-space: nowrap;
+  }
+  .picking-banner.show { display: flex; }
+
+  .message-banner-float {
+    position: absolute; top: 16px; left: 50%; transform: translateX(-50%);
+    z-index: 970; max-width: 86%; text-align: center;
+    background-color: var(--success); color: #04260f;
+    padding: 11px 20px; border-radius: 12px; font-weight: 700; font-size: 13.5px;
+    display: none; box-shadow: 0 4px 14px var(--shadow);
+  }
+  .message-banner-float.error { background-color: var(--danger); color: #fff; }
+
+  .map-controls {
+    position: absolute; top: 16px; right: 16px; z-index: 950;
+    display: flex; flex-direction: column; gap: 10px; align-items: center;
+  }
+  .map-ctrl-group {
+    background-color: var(--bg-sidebar); backdrop-filter: blur(10px);
+    border: 0.5px solid var(--border); border-radius: 12px;
+    box-shadow: 0 2px 10px var(--shadow); overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .map-ctrl-btn {
+    width: 38px; height: 38px; background: transparent; border: none;
+    color: var(--text-primary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; border-bottom: 0.5px solid var(--border-soft);
+  }
+  .map-ctrl-group .map-ctrl-btn:last-child { border-bottom: none; }
+  .map-ctrl-btn:active { background-color: var(--bg-card-hover); }
+  .map-ctrl-btn.active-theme { color: #ffb300; }
+
+  .map-attribution {
+    position: absolute; bottom: 8px; left: 8px; z-index: 800;
+    font-size: 10.5px; color: rgba(255,255,255,0.55);
+    background: rgba(0,0,0,0.25); padding: 2px 7px; border-radius: 6px;
+    pointer-events: none;
+  }
+
+  /* ---------- Modal de reporte ---------- */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    z-index: 2000; align-items: center; justify-content: center;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-content {
+    width: 100%; max-width: 420px; margin: 16px;
+    background-color: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: 18px; padding: 20px;
+    box-shadow: 0 8px 30px var(--shadow);
+  }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .modal-header h2 { font-size: 17px; font-weight: 700; }
+  .address-preview {
+    background-color: var(--bg-input); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 14px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .address-preview .icon { color: var(--accent); margin-top: 2px; }
+  .address-preview-text { font-size: 13.5px; line-height: 1.4; }
+  .address-preview-street { font-weight: 700; }
+  .address-preview-cep { color: var(--text-secondary); font-size: 12px; margin-top: 2px; }
+
+  .field-label { font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; }
+  select, textarea {
+    width: 100%; background-color: var(--bg-input); border: 1px solid var(--border);
+    color: var(--text-primary); border-radius: 10px; padding: 10px 12px;
+    font-size: 14px; margin-bottom: 14px; outline: none; resize: none;
+  }
+  textarea { min-height: 68px; font-family: inherit; }
+
+  /* ---------- Marcadores customizados ---------- */
+  .marker-pin {
+    width: 32px; height: 32px; border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg); background-color: var(--bg-card);
+    border: 2px solid currentColor; display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+  .marker-pin .icon { width: 16px; height: 16px; transform: rotate(45deg); }
+
+  /* ---------- Popup do mapa (CEP da ocorrência) ---------- */
+  .leaflet-popup-content-wrapper {
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    border-radius: 12px;
+    box-shadow: 0 4px 16px var(--shadow);
+  }
+  .leaflet-popup-tip { background-color: var(--bg-card); }
+  .leaflet-popup-content { margin: 10px 12px; }
+  .occurrence-popup-title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; }
+  .occurrence-popup-cep { font-size: 12.5px; color: var(--text-secondary); }
+  .occurrence-popup-bairro { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
+
+  @media (max-width: 760px) {
+    .sidebar { position: absolute; left: 0; top: 0; z-index: 1200; width: 88vw; min-width: 0; }
+    .sidebar.collapsed { margin-left: -88vw; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-shell">
+  <!-- ===================== SIDEBAR ===================== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <div class="sidebar-title-row">
+        <div class="app-title-block">
+          <h1>GeoAlerta</h1>
+          <div class="app-subtitle">Ocorrências de Joinville/SC</div>
+        </div>
+        <button class="icon-btn" id="collapseBtn" title="Minimizar painel"></button>
+      </div>
+      <div class="search-bar">
+        <svg class="icon icon-sm" id="searchIconBtn" style="cursor:pointer;" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" onclick="triggerSearchFromButton()"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg>
+        <input type="text" id="searchInput" placeholder="Buscar por nome do local, rua, bairro ou CEP" onkeydown="handleKeyDown(event)" oninput="handleSearchInput()" />
+        <div class="search-spinner" id="searchSpinner"></div>
+      </div>
+      <button class="report-cta" id="reportCtaBtn" onclick="startPickLocation()">
+        <span id="reportCtaIcon"></span>
+        <span id="reportCtaLabel">Marcar ocorrência</span>
+      </button>
+    </div>
+
+    <div class="sidebar-scroll" id="sidebarScroll">
+      <div id="sidebarContent"></div>
+    </div>
+
+    <div class="sidebar-footer">
+      Dados de alagamentos e inundações de Joinville/SC, atualizados a partir da planilha colaborativa.<br/>
+      Copyright © 2026. Todos os direitos reservados.
+    </div>
+  </aside>
+
+  <!-- ===================== MAPA ===================== -->
+  <div class="map-wrap">
+    <div id="map"></div>
+
+    <button class="sidebar-reopen-btn" id="reopenBtn" onclick="setSidebarCollapsed(false)" title="Mostrar painel"></button>
+
+    <div class="picking-banner" id="pickingBanner">
+      <span id="pickingBannerIcon"></span>
+      <span>Clique no mapa para marcar o local da ocorrência</span>
+    </div>
+
+    <div class="message-banner-float" id="messageBanner"></div>
+
+    <div class="map-controls">
+      <div class="map-ctrl-group">
+        <button class="map-ctrl-btn" id="themeToggleBtn" title="Alternar tema"></button>
+      </div>
+      <div class="map-ctrl-group">
+        <button class="map-ctrl-btn" id="locateBtn" title="Minha localização"></button>
+        <button class="map-ctrl-btn" id="layerBtn" title="Alternar camada do mapa"></button>
+      </div>
+      <div class="map-ctrl-group">
+        <button class="map-ctrl-btn" id="zoomInBtn" title="Aumentar zoom"></button>
+        <button class="map-ctrl-btn" id="zoomOutBtn" title="Diminuir zoom"></button>
+      </div>
+    </div>
+
+    <div class="map-attribution">© OpenStreetMap contributors</div>
+  </div>
+</div>
+
+<!-- ===================== MODAL DE REPORTE ===================== -->
+<div class="modal-overlay" id="reportModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Reportar ocorrência</h2>
+      <button class="icon-btn" id="modalCloseBtn" onclick="closeReportModal()"></button>
+    </div>
+
+    <div class="address-preview" id="addressPreview">
+      <span id="addressPreviewIcon"></span>
+      <div class="address-preview-text">
+        <div class="address-preview-street" id="addressPreviewStreet">—</div>
+        <div class="address-preview-cep" id="addressPreviewCep">—</div>
+      </div>
+    </div>
+
+    <div class="field-label">Tipo de ocorrência</div>
+    <select id="reportReason"></select>
+
+    <div class="field-label">Detalhes (opcional)</div>
+    <textarea id="reportDetails" placeholder="Descreva o que está acontecendo..."></textarea>
+
+    <button class="action-btn-full btn-primary" onclick="submitReport()">Enviar ocorrência</button>
+  </div>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  // ---------- Ícones (line art, sem preenchimento) ----------
+  const ICONS = {
+    target: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/></svg>',
+    layers: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><polygon points="12,3 21,8 12,13 3,8"/><polyline points="3,13 12,18 21,13"/></svg>',
+    plus: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    minus: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    pin: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M12 21s-7-7.2-7-12a7 7 0 0 1 14 0c0 4.8-7 12-7 12z"/><circle cx="12" cy="9" r="2.2"/></svg>',
+    map: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><polygon points="3,6 9,4 15,6 21,4 21,18 15,20 9,18 3,20"/><line x1="9" y1="4" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="20"/></svg>',
+    wave: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><path d="M2 9c1.5-2 3.5-2 5 0s3.5 2 5 0 3.5-2 5 0 3.5 2 5 0"/><path d="M2 15.5c1.5-2 3.5-2 5 0s3.5 2 5 0 3.5-2 5 0 3.5 2 5 0"/></svg>',
+    flood: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21 L4 12 L12 5 L20 12 L20 21"/><path d="M2 21c1.2-1.4 2.8-1.4 4 0s2.8 1.4 4 0 2.8-1.4 4 0 2.8-1.4 4 0 2.8-1.4 4 0"/><path d="M9 21v-5h6v5"/></svg>',
+    drain: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="3" x2="12" y2="21"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="6.2" y1="6.2" x2="17.8" y2="17.8"/><line x1="17.8" y1="6.2" x2="6.2" y2="17.8"/></svg>',
+    riverUp: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 17c1.5-2 3.5-2 5 0s3.5 2 5 0 3.5-2 5 0 3.5 2 5 0"/><polyline points="12,11 12,2"/><polyline points="8.5,5.5 12,2 15.5,5.5"/></svg>',
+    landslide: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M3 19 L9 8 L13 14 L16 10 L21 19 Z"/><line x1="6" y1="19" x2="10" y2="13"/></svg>',
+    warning: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M12 3 L21 19 H3 Z"/><line x1="12" y1="9" x2="12" y2="13.5"/><circle cx="12" cy="16.3" r="0.6" fill="currentColor" stroke="none"/></svg>',
+    close: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></svg>',
+    chevron: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,5 16,12 9,19"/></svg>',
+    back: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15,5 8,12 15,19"/></svg>',
+    globe: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><ellipse cx="12" cy="12" rx="4" ry="9"/><line x1="3" y1="12" x2="21" y2="12"/></svg>',
+    compass: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.4" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polygon points="15,9 13,13 9,15 11,11"/></svg>',
+    flag: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><line x1="5" y1="3" x2="5" y2="21"/><path d="M5 4 h13 l-3 4 3 4 H5"/></svg>',
+    search: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="10.5" cy="10.5" r="6.5"/><line x1="15.5" y1="15.5" x2="21" y2="21"/></svg>',
+    clock: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12,7 12,12 15.5,14"/></svg>',
+    hash: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><line x1="4" y1="9" x2="20" y2="9"/><line x1="4" y1="15" x2="20" y2="15"/><line x1="10" y1="3" x2="8" y2="21"/><line x1="16" y1="3" x2="14" y2="21"/></svg>',
+    road: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><path d="M8 3 L4 21"/><path d="M16 3 L20 21"/><line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="10.5" x2="12" y2="13.5"/><line x1="12" y1="17" x2="12" y2="20"/></svg>',
+    sun: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="4.2" x2="6" y2="6"/><line x1="18" y1="18" x2="19.8" y2="19.8"/><line x1="4.2" y1="19.8" x2="6" y2="18"/><line x1="18" y1="6" x2="19.8" y2="4.2"/></svg>',
+    moon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>',
+    sidebarIcon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9.5" y1="4" x2="9.5" y2="20"/></svg>'
+  };
+
+  // ---------- Tipos de ocorrência (cores e ícones) ----------
+  const CATEGORY_META = {
+    all:          { icon: 'map',       label: 'Todas as ocorrências',        color: '#98989d' },
+    alagamento:   { icon: 'wave',      label: 'Alagamento',                  color: '#64d2ff' }, // azul claro
+    inundacao:    { icon: 'flood',     label: 'Inundação',                   color: '#1e3a8a' }, // azul escuro
+    bueiro:       { icon: 'drain',     label: 'Bueiro entupido',             color: '#bf5af2' },
+    rio:          { icon: 'riverUp',   label: 'Rio/córrego transbordando',   color: '#32ade6' },
+    deslizamento: { icon: 'landslide', label: 'Deslizamento',                color: '#ff9f0a' },
+    via:          { icon: 'warning',   label: 'Via interditada',             color: '#ff453a' },
+    default:      { icon: 'pin',       label: 'Local',                       color: '#8e8e93' }
+  };
+  const REPORTABLE_CATEGORIES = ['alagamento', 'inundacao', 'bueiro', 'rio', 'deslizamento', 'via'];
+
+  // Preenche o <select> do modal de reporte
+  const reasonSelect = document.getElementById('reportReason');
+  REPORTABLE_CATEGORIES.forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = CATEGORY_META[key].label;
+    reasonSelect.appendChild(opt);
+  });
+  ['resolvido:Situação já resolvida', 'outro:Outro'].forEach(pair => {
+    const [value, label] = pair.split(':');
+    const opt = document.createElement('option');
+    opt.value = value; opt.textContent = label;
+    reasonSelect.appendChild(opt);
+  });
+
+  // Preenche ícones estáticos
+  document.getElementById('collapseBtn').innerHTML = ICONS.sidebarIcon;
+  document.getElementById('reopenBtn').innerHTML = ICONS.sidebarIcon;
+  document.getElementById('reportCtaIcon').innerHTML = ICONS.flag;
+  document.getElementById('pickingBannerIcon').innerHTML = ICONS.target;
+  document.getElementById('modalCloseBtn').innerHTML = ICONS.close;
+  document.getElementById('addressPreviewIcon').innerHTML = ICONS.pin;
+  document.getElementById('themeToggleBtn').innerHTML = ICONS.moon;
+  document.getElementById('locateBtn').innerHTML = ICONS.target;
+  document.getElementById('layerBtn').innerHTML = ICONS.layers;
+  document.getElementById('zoomInBtn').innerHTML = ICONS.plus;
+  document.getElementById('zoomOutBtn').innerHTML = ICONS.minus;
+
+  // ---------- Mapa ----------
+  const TILE_LAYERS = {
+    dark:      { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',  attribution: '© OpenStreetMap & CartoDB' },
+    light:     { url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri — Light Gray Canvas' },
+    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri' }
+  };
+
+  const JOINVILLE_CENTER = [-26.30444, -48.84556];
+  const map = L.map('map', { zoomControl: false }).setView(JOINVILLE_CENTER, 13);
+  let currentLayerKey = 'dark';
+  let currentTileLayer = L.tileLayer(TILE_LAYERS.dark.url, { maxZoom: 19, attribution: TILE_LAYERS.dark.attribution }).addTo(map);
+
+  function setLayer(key) {
+    currentLayerKey = key;
+    map.removeLayer(currentTileLayer);
+    currentTileLayer = L.tileLayer(TILE_LAYERS[key].url, { maxZoom: 19, attribution: TILE_LAYERS[key].attribution }).addTo(map);
+  }
+  // Alterna diretamente entre o mapa normal (no tema atual) e o mapa de satélite —
+  // sem passar por uma etapa intermediária de claro/escuro.
+  function toggleLayer() {
+    setLayer(currentLayerKey === 'satellite' ? currentTheme : 'satellite');
+  }
+
+  // ---------- Tema claro/escuro ----------
+  let currentTheme = 'dark';
+  function applyTheme(theme) {
+    currentTheme = theme;
+    document.documentElement.setAttribute('data-theme', theme);
+    document.getElementById('themeToggleBtn').innerHTML = theme === 'dark' ? ICONS.moon : ICONS.sun;
+    document.getElementById('themeToggleBtn').classList.toggle('active-theme', theme === 'light');
+    // Acompanha o tema no mapa, exceto se estiver em modo satélite
+    if (currentLayerKey !== 'satellite') setLayer(theme);
+  }
+  document.getElementById('themeToggleBtn').onclick = () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+  document.getElementById('locateBtn').onclick = () => locateMe();
+  document.getElementById('layerBtn').onclick = () => toggleLayer();
+  document.getElementById('zoomInBtn').onclick = () => map.zoomIn();
+  document.getElementById('zoomOutBtn').onclick = () => map.zoomOut();
+
+  // ---------- Minimizar / desminimizar barra lateral ----------
+  function setSidebarCollapsed(collapsed) {
+    document.getElementById('sidebar').classList.toggle('collapsed', collapsed);
+    document.getElementById('reopenBtn').style.display = collapsed ? 'flex' : 'none';
+  }
+  document.getElementById('collapseBtn').onclick = () => setSidebarCollapsed(true);
+
+  // ---------- Estado ----------
+  let activeMarker = null;
+  let userMarker = null;
+  let poiMarkers = [];       // marcadores de demonstração (limpos ao trocar filtro)
+  let reportMarkers = [];    // marcadores de ocorrências reportadas pelo usuário (persistentes)
+  let reports = [];          // histórico de ocorrências reportadas
+  let currentReportTarget = null; // local vindo de uma busca, pronto para reportar
+  let pendingReport = null;  // local escolhido clicando no mapa, aguardando confirmação no modal
+  let isPicking = false;
+
+  let sheetOccurrences = [];  // ocorrências carregadas da planilha (Joinville/SC)
+  let sheetMarkerRefs = [];   // { item, marker } — marcadores das ocorrências da planilha
+  let sheetLoading = true;
+
+  // Vincula ao marcador um popup exibido diretamente no mapa com a rua e o CEP da ocorrência
+  function bindOccurrencePopup(marker, item) {
+    const street = item.street || 'Rua não identificada';
+    const cep = item.cep || 'não informado';
+    const bairroLine = item.bairro ? `<div class="occurrence-popup-bairro">${item.bairro}${item.cidade ? ' · ' + item.cidade : ''}</div>` : '';
+    marker.bindPopup(`
+      <div class="occurrence-popup-title">${street}</div>
+      <div class="occurrence-popup-cep">CEP: ${cep}</div>
+      ${bairroLine}
+    `);
+    return marker;
+  }
+
+  function divIcon(category) {
+    const meta = CATEGORY_META[category] || CATEGORY_META.default;
+    return L.divIcon({
+      className: '',
+      html: `<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`,
+      iconSize: [32, 32],
+      iconAnchor: [16, 32],
+      popupAnchor: [0, -28]
+    });
+  }
+
+  function showBanner(text, isError) {
+    const banner = document.getElementById('messageBanner');
+    banner.innerText = text;
+    banner.className = 'message-banner-float' + (isError ? ' error' : '');
+    banner.style.display = 'block';
+    setTimeout(() => { banner.style.display = 'none'; }, 3500);
+  }
+
+  function clearPoiMarkers() {
+    poiMarkers.forEach(m => map.removeLayer(m));
+    poiMarkers = [];
+  }
+
+  function distanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371;
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLon/2)**2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  }
+  function formatDistance(km) { return km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`; }
+  function formatDateTime(date) {
+    return date.toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+
+  // ---------- Planilha de ocorrências (Joinville/SC) ----------
+  // Fonte: planilha publicada na web pelo usuário. Coluna de tipo: 1 = Alagamento, 2 = Inundação.
+  // ---------- Banco de dados de ocorrências (Joinville/SC) ----------
+  // Dados embutidos diretamente no arquivo (planilha "Consolidado - analise"), sem depender
+  // de nenhum link externo. Coluna Tipo: 1 = Alagamento, 2 = Inundação.
+  const SHEET_CSV_DATA = ``;
+
+  const geocodeCache = {};
+
+  function normalizeText(str) {
+    return (str || '').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  }
+
+  // Parser de CSV simples, tolerante a campos entre aspas com vírgulas/quebras de linha
+  function parseCsv(text) {
+    const rows = [];
+    let row = [], field = '', inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+      const c = text[i];
+      if (inQuotes) {
+        if (c === '"') {
+          if (text[i + 1] === '"') { field += '"'; i++; }
+          else inQuotes = false;
+        } else field += c;
+      } else {
+        if (c === '"') inQuotes = true;
+        else if (c === ',') { row.push(field); field = ''; }
+        else if (c === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+        else if (c === '\r') { /* ignora */ }
+        else field += c;
+      }
+    }
+    if (field.length || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(r => r.some(c => (c || '').trim() !== ''));
+  }
+
+  const HEADER_SYNONYMS = {
+    tipo:     ['tipo', 'tipo de ocorrencia', 'ocorrencia', 'categoria'],
+    rua:      ['rua', 'logradouro', 'endereco', 'nome da rua'],
+    cep:      ['cep', 'codigo postal'],
+    bairro:   ['bairro'],
+    cidade:   ['cidade', 'municipio'],
+    data:     ['data', 'data/hora', 'data e hora', 'horario', 'data hora', 'timestamp', 'carimbo de data/hora', 'carimbo de data hora'],
+    detalhes: ['detalhes', 'observacao', 'observacoes', 'descricao', 'comentario']
+  };
+
+  function detectColumns(headerRow) {
+    const normalized = headerRow.map(normalizeText);
+    const map = {};
+    Object.keys(HEADER_SYNONYMS).forEach(key => {
+      const syns = HEADER_SYNONYMS[key];
+      let idx = normalized.findIndex(h => syns.includes(h));
+      if (idx === -1) idx = normalized.findIndex(h => syns.some(s => h.includes(s)));
+      map[key] = idx;
+    });
+    return map;
+  }
+
+  function parseSheetTimestamp(str) {
+    if (!str) return null;
+    str = str.trim();
+    const m = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (m) {
+      let [, d, mo, y, h, mi, s] = m;
+      if (y.length === 2) y = '20' + y;
+      return new Date(parseInt(y), parseInt(mo) - 1, parseInt(d), h ? parseInt(h) : 0, mi ? parseInt(mi) : 0, s ? parseInt(s) : 0);
+    }
+    const d2 = new Date(str);
+    if (!isNaN(d2.getTime())) return d2;
+    return null;
+  }
+
+  function mapTipoToCategory(rawTipo) {
+    const t = normalizeText(rawTipo);
+    if (t === '1' || t === 'alagamento') return 'alagamento';
+    if (t === '2' || t.includes('inundacao')) return 'inundacao';
+    return null;
+  }
+
+  async function fetchSheetRows() {
+    const text = SHEET_CSV_DATA;
+    const rows = parseCsv(text);
+    if (rows.length < 2) return [];
+    const header = rows[0];
+    const cols = detectColumns(header);
+
+    const parsed = [];
+    for (let i = 1; i < rows.length; i++) {
+      const r = rows[i];
+      const rawTipo = cols.tipo > -1 ? r[cols.tipo] : '';
+      const category = mapTipoToCategory(rawTipo);
+      if (!category) continue;
+
+      const street = cols.rua > -1 ? (r[cols.rua] || '').trim() : '';
+      const cep = cols.cep > -1 ? (r[cols.cep] || '').trim() : '';
+      const bairro = cols.bairro > -1 ? (r[cols.bairro] || '').trim() : '';
+      const cidade = cols.cidade > -1 ? (r[cols.cidade] || '').trim() : 'Joinville';
+      const detalhes = cols.detalhes > -1 ? (r[cols.detalhes] || '').trim() : '';
+      const dataStr = cols.data > -1 ? (r[cols.data] || '').trim() : '';
+      const timestamp = parseSheetTimestamp(dataStr) || new Date();
+
+      parsed.push({
+        id: 'sheet-' + i,
+        source: 'sheet',
+        category,
+        street: street || 'Rua não identificada',
+        cep: cep || '',
+        bairro, cidade, details: detalhes, timestamp
+      });
+    }
+    return parsed;
+  }
+
+  async function geocodeAddress(query) {
+    const key = normalizeText(query);
+    if (geocodeCache[key] !== undefined) return geocodeCache[key];
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1&countrycodes=br`);
+      const data = await resp.json();
+      const result = (data && data[0]) ? { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) } : null;
+      geocodeCache[key] = result;
+      return result;
+    } catch (e) {
+      geocodeCache[key] = null;
+      return null;
+    }
+  }
+
+  function showAllSheetMarkers() {
+    sheetMarkerRefs.forEach(ref => { if (!map.hasLayer(ref.marker)) map.addLayer(ref.marker); });
+  }
+  function showOnlySheetCategory(category) {
+    sheetMarkerRefs.forEach(ref => {
+      const show = ref.item.category === category;
+      if (show && !map.hasLayer(ref.marker)) map.addLayer(ref.marker);
+      if (!show && map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
+    });
+  }
+
+  function renderSheetMarkers() {
+    sheetMarkerRefs.forEach(ref => map.removeLayer(ref.marker));
+    sheetMarkerRefs = [];
+    sheetOccurrences.forEach(item => {
+      const marker = L.marker([item.lat, item.lon], { icon: divIcon(item.category) }).addTo(map);
+      marker.__occurrenceId = item.id;
+      bindOccurrencePopup(marker, item);
+      marker.on('click', () => focusOccurrence(item));
+      sheetMarkerRefs.push({ item, marker });
+    });
+  }
+
+  // ---------- Localização a partir do CEP (as coordenadas da planilha são ignoradas) ----------
+  const viaCepCache = {};
+  async function lookupViaCep(cleanCep) {
+    if (viaCepCache[cleanCep] !== undefined) return viaCepCache[cleanCep];
+    try {
+      const resp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+      const data = await resp.json();
+      const result = data.erro ? null : data;
+      viaCepCache[cleanCep] = result;
+      return result;
+    } catch (e) {
+      viaCepCache[cleanCep] = null;
+      return null;
+    }
+  }
+
+  // Resolve a posição de uma ocorrência sempre a partir do CEP; se o CEP não existir
+  // ou não for encontrado, cai para o endereço (rua/bairro/cidade) informado na planilha.
+  async function resolvePositionByCep(item) {
+    const cleanCep = (item.cep || '').replace(/\D/g, '');
+    let query = null;
+
+    if (cleanCep.length === 8) {
+      const via = await lookupViaCep(cleanCep);
+      if (via) {
+        query = [via.logradouro, via.bairro, via.localidade, via.uf].filter(Boolean).join(', ');
+      }
+    }
+    if (!query) {
+      query = [item.street, item.bairro, item.cidade || 'Joinville', 'SC', 'Brasil'].filter(Boolean).join(', ');
+    }
+    return geocodeAddress(query);
+  }
+
+  async function initSheetData() {
+    if (!SHEET_CSV_DATA || !SHEET_CSV_DATA.trim()) {
+      sheetLoading = false;
+      sheetOccurrences = [];
+      resetSidebar();
+      return;
+    }
+    sheetLoading = true;
+    resetSidebar();
+    try {
+      const rows = await fetchSheetRows();
+      const withCoords = [];
+      for (const item of rows) {
+        const pos = await resolvePositionByCep(item);
+        if (pos) { item.lat = pos.lat; item.lon = pos.lon; }
+        await new Promise(r => setTimeout(r, 200));
+        if (isFinite(item.lat) && isFinite(item.lon)) withCoords.push(item);
+      }
+      sheetOccurrences = withCoords;
+      renderSheetMarkers();
+      if (sheetOccurrences.length === 0) {
+        showBanner('Nenhuma ocorrência encontrada na planilha.', true);
+      }
+    } catch (e) {
+      console.error('Erro ao carregar a planilha:', e);
+      showBanner('Não foi possível carregar os dados da planilha. Verifique sua conexão.', true);
+    } finally {
+      sheetLoading = false;
+      resetSidebar();
+    }
+  }
+
+  // ---------- Geocodificação (busca) ----------
+  async function searchByText(query) {
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=8&countrycodes=br`);
+    const data = await response.json();
+    return data.map(item => ({ lat: parseFloat(item.lat), lon: parseFloat(item.lon), title: item.display_name.split(',')[0], subtitle: item.display_name, category: 'default' }));
+  }
+
+  async function searchByCep(cep) {
+    const viaCepResp = await fetch(`https://viacep.com.br/ws/${cep}/json/`);
+    const viaCep = await viaCepResp.json();
+    if (viaCep.erro) return [];
+    const addressQuery = `${viaCep.logradouro}, ${viaCep.bairro}, ${viaCep.localidade}, ${viaCep.uf}`;
+    const geoResp = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(addressQuery)}&limit=5&countrycodes=br`);
+    const geoData = await geoResp.json();
+    return geoData.map(item => ({
+      lat: parseFloat(item.lat), lon: parseFloat(item.lon),
+      title: viaCep.logradouro || item.display_name.split(',')[0],
+      subtitle: `${viaCep.bairro}, ${viaCep.localidade} - ${viaCep.uf} · CEP ${viaCep.cep}`,
+      category: 'default',
+      cep: viaCep.cep
+    }));
+  }
+
+  async function reverseGeocode(lat, lon) {
+    try {
+      const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&addressdetails=1`);
+      const data = await resp.json();
+      const addr = data.address || {};
+      const street = addr.road || addr.pedestrian || addr.footway || addr.residential || (data.display_name ? data.display_name.split(',')[0] : 'Rua não identificada');
+      const bairro = addr.suburb || addr.neighbourhood || addr.city_district || '';
+      const cidade = addr.city || addr.town || addr.village || addr.municipality || '';
+      const cep = addr.postcode || 'CEP não encontrado';
+      return { street, cep, bairro, cidade };
+    } catch (e) {
+      return { street: 'Endereço não identificado', cep: '—', bairro: '', cidade: '' };
+    }
+  }
+
+  // ---------- Cards de resultado ----------
+  function cardHtml(item, distText) {
+    const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
+    return `
+      <div class="result-card" onclick='selectSearchResult(${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+        <div class="result-icon" style="background:${meta.color}22; color:${meta.color}">${ICONS[meta.icon]}</div>
+        <div class="result-text">
+          <div class="result-title">${item.title}</div>
+          <div class="result-subtitle">${item.subtitle}</div>
+          <div class="result-distance">${distText}</div>
+        </div>
+        <div class="result-chevron">${ICONS.chevron}</div>
+      </div>`;
+  }
+
+  function occurrenceCardHtml(item, distText) {
+    const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
+    return `
+      <div class="result-card" onclick='focusOccurrence(${JSON.stringify(item).replace(/'/g, "&apos;")})'>
+        <div class="result-icon" style="background:${meta.color}22; color:${meta.color}">${ICONS[meta.icon]}</div>
+        <div class="result-text">
+          <div class="result-title">${item.street}</div>
+          <div class="result-subtitle">${item.cep || 'CEP não informado'}${item.bairro ? ' · ' + item.bairro : ''}</div>
+          <div class="result-distance">${distText}</div>
+        </div>
+        <div class="result-chevron">${ICONS.chevron}</div>
+      </div>`;
+  }
+
+  // ---------- Busca (nome do local / rua / bairro / cidade / CEP) ----------
+  let searchDebounceTimer = null;
+
+  function handleSearchInput() {
+    // Busca instantânea (sem chamadas externas) enquanto o usuário digita,
+    // procurando entre as ocorrências já cadastradas (planilha + reportadas).
+    clearTimeout(searchDebounceTimer);
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) { resetSidebar(); return; }
+    searchDebounceTimer = setTimeout(() => {
+      const local = searchLocalOccurrences(query);
+      renderSearchResults(local, [], { onlyLocalPreview: true });
+    }, 220);
+  }
+
+  async function handleKeyDown(event) {
+    if (event.key !== 'Enter') return;
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+    clearTimeout(searchDebounceTimer);
+    await runSearch(query);
+  }
+
+  function triggerSearchFromButton() {
+    const query = document.getElementById('searchInput').value.trim();
+    if (!query) return;
+    clearTimeout(searchDebounceTimer);
+    runSearch(query);
+  }
+
+  function isCep(query) { return /^\d{5}-?\d{3}$/.test(query.trim()); }
+
+  // Procura por nome da rua, bairro, cidade ou CEP entre as ocorrências já carregadas
+  // (dados da planilha + ocorrências reportadas pelo usuário), sem depender de internet.
+  function searchLocalOccurrences(query) {
+    const q = normalizeText(query);
+    const qDigits = query.replace(/\D/g, '');
+    const all = [...sheetOccurrences, ...reports];
+    return all.filter(item => {
+      if (!isFinite(item.lat) || !isFinite(item.lon)) return false;
+      const streetMatch = normalizeText(item.street).includes(q);
+      const bairroMatch = normalizeText(item.bairro).includes(q);
+      const cidadeMatch = normalizeText(item.cidade).includes(q);
+      const cepDigits = (item.cep || '').replace(/\D/g, '');
+      const cepMatch = qDigits.length >= 3 && cepDigits.includes(qDigits);
+      return streetMatch || bairroMatch || cidadeMatch || cepMatch;
+    });
+  }
+
+  async function runSearch(query) {
+    const spinner = document.getElementById('searchSpinner');
+    spinner.style.display = 'block';
+    try {
+      const local = searchLocalOccurrences(query);
+      let external = [];
+      try {
+        external = isCep(query) ? await searchByCep(query.replace('-', '')) : await searchByText(query);
+      } catch (e) {
+        console.error('Erro na busca externa:', e);
+      }
+      renderSearchResults(local, external);
+    } catch (error) {
+      console.error('Erro na busca:', error);
+      showBanner('Não foi possível concluir a busca. Tente novamente.', true);
+    } finally {
+      spinner.style.display = 'none';
+    }
+  }
+
+  function renderSearchResults(local, external, opts) {
+    opts = opts || {};
+    const container = document.getElementById('sidebarContent');
+    clearPoiMarkers();
+    const center = map.getCenter();
+
+    let html = '';
+    if (local && local.length > 0) {
+      const label = opts.onlyLocalPreview ? 'Ocorrências cadastradas' : 'Ocorrências encontradas';
+      html += `<div class="menu-section-label">${label}</div><div class="results-list">${local.map(item => occurrenceCardHtml(item, formatDistance(distanceKm(center.lat, center.lng, item.lat, item.lon)))).join('')}</div>`;
+    }
+    if (external && external.length > 0) {
+      const label = local && local.length > 0 ? 'Outros endereços' : 'Resultados da busca';
+      html += `<div class="menu-section-label">${label}</div><div class="results-list">${external.map(item => cardHtml(item, formatDistance(distanceKm(center.lat, center.lng, item.lat, item.lon)))).join('')}</div>`;
+    }
+
+    if (!html) {
+      const hint = opts.onlyLocalPreview
+        ? 'Nenhuma ocorrência cadastrada encontrada. Pressione Enter para buscar o endereço.'
+        : 'Nenhum local encontrado para essa busca.';
+      container.innerHTML = `<div class="menu-section-label">Resultados</div><div class="empty-state">${ICONS.search}<span>${hint}</span></div>`;
+      return;
+    }
+
+    container.innerHTML = html;
+    if (!opts.onlyLocalPreview) {
+      if (local && local.length > 0) focusOccurrence(local[0]);
+      else if (external && external.length > 0) selectSearchResult(external[0]);
+    }
+  }
+
+  // ---------- Menu principal (tipos de ocorrência) ----------
+  function resetSidebar() {
+    if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
+    clearPoiMarkers();
+    showAllSheetMarkers();
+    currentReportTarget = null;
+    document.getElementById('messageBanner').style.display = 'none';
+
+    const listHtml = Object.keys(CATEGORY_META).filter(k => k !== 'default').map(key => {
+      const meta = CATEGORY_META[key];
+      const count = sheetOccurrences.filter(o => o.category === key).length;
+      const countBadge = count > 0 ? `<span class="menu-item-count">${count}</span>` : '';
+      return `<div class="menu-item" onclick="selectFilter('${key}')">
+        <div class="menu-item-icon" style="background:${meta.color}22; color:${meta.color}">${ICONS[meta.icon]}</div>
+        <span>${meta.label}</span>
+        ${countBadge}
+        <div class="menu-item-chevron">${ICONS.chevron}</div>
+      </div>`;
+    }).join('');
+
+    let recentHtml = '';
+    if (reports.length > 0) {
+      const recent = reports.slice().sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+      const center = map.getCenter();
+      recentHtml = `
+        <div class="menu-section-label">Ocorrências reportadas por você</div>
+        <div class="results-list">${recent.map(r => occurrenceCardHtml(r, formatDistance(distanceKm(center.lat, center.lng, r.lat, r.lon)))).join('')}</div>
+      `;
+    }
+
+    const loadingHtml = sheetLoading
+      ? `<div class="empty-state">${ICONS.clock}<span>Carregando ocorrências da planilha...</span></div>`
+      : '';
+
+    document.getElementById('sidebarContent').innerHTML = `
+      <div class="menu-section-label">Tipos de ocorrência</div>
+      <div class="menu-list">${listHtml}</div>
+      ${loadingHtml}
+      ${recentHtml}
+    `;
+  }
+
+  // ---------- Filtro por categoria (dados reais da planilha) ----------
+  function selectFilter(category) {
+    if (category === 'all') { resetSidebar(); return; }
+    showCategoryFromSheet(category);
+  }
+
+  function showCategoryFromSheet(category) {
+    const meta = CATEGORY_META[category];
+    const container = document.getElementById('sidebarContent');
+    const items = sheetOccurrences.filter(o => o.category === category);
+    showOnlySheetCategory(category);
+
+    const backRow = `
+      <div class="back-row" onclick="resetSidebar()">
+        <div class="icon-btn">${ICONS.back}</div>
+        <div class="back-row-title" style="color:${meta.color}">${ICONS[meta.icon]}${meta.label}</div>
+      </div>`;
+
+    if (sheetLoading) {
+      container.innerHTML = backRow + `<div class="empty-state">${ICONS[meta.icon]}<span>Carregando ocorrências da planilha...</span></div>`;
+      return;
+    }
+
+    if (items.length === 0) {
+      container.innerHTML = backRow + `<div class="empty-state">${ICONS[meta.icon]}<span>Nenhuma ocorrência desse tipo registrada na planilha.</span></div>`;
+      return;
+    }
+
+    const center = map.getCenter();
+    const cardsHtml = items.map(item => occurrenceCardHtml(item, formatDistance(distanceKm(center.lat, center.lng, item.lat, item.lon)))).join('');
+
+    container.innerHTML = `
+      ${backRow}
+      <div class="section-note">Dados da planilha de ocorrências de Joinville/SC.</div>
+      <div class="results-list">${cardsHtml}</div>
+    `;
+  }
+
+  // ---------- Detalhe: local de busca ----------
+  function selectSearchResult(item) {
+    const lat = parseFloat(item.lat), lon = parseFloat(item.lon);
+    const title = item.title || 'Local';
+    const subtitle = item.subtitle || '';
+    const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
+    const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
+
+    map.flyTo([lat, lon], 16, { duration: 1.1 });
+    if (activeMarker) map.removeLayer(activeMarker);
+    activeMarker = L.marker([lat, lon], { icon: divIcon(item.category) }).addTo(map);
+    currentReportTarget = { lat, lon, street: title, cep: item.cep || null, title, subtitle };
+
+    const container = document.getElementById('sidebarContent');
+    container.innerHTML = `
+      <div class="back-row" onclick="resetSidebar()">
+        <div class="icon-btn">${ICONS.back}</div>
+        <div class="back-row-title">Local selecionado</div>
+      </div>
+      <div class="detail-title" style="color:${meta.color}">${title}</div>
+      <div class="result-subtitle" style="margin-bottom:16px;">${subtitle}</div>
+      <div class="detail-actions">
+        <button class="action-btn-full btn-secondary" onclick="window.open('${directionsUrl}', '_blank')">${ICONS.compass}Como chegar</button>
+        <button class="action-btn-full btn-primary" onclick="reportAtCurrentTarget()">${ICONS.flag}Marcar ocorrência aqui</button>
+      </div>
+    `;
+  }
+
+  // ---------- Detalhe: ocorrência (demonstração ou reportada) ----------
+  function focusOccurrence(item) {
+    const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
+    const timestamp = item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp);
+
+    map.flyTo([item.lat, item.lon], 16, { duration: 1.1 });
+    if (activeMarker) map.removeLayer(activeMarker);
+    activeMarker = L.marker([item.lat, item.lon], { icon: divIcon(item.category) }).addTo(map);
+    bindOccurrencePopup(activeMarker, item);
+    activeMarker.openPopup();
+
+    const container = document.getElementById('sidebarContent');
+    container.innerHTML = `
+      <div class="back-row" onclick="resetSidebar()">
+        <div class="icon-btn">${ICONS.back}</div>
+        <div class="back-row-title">Detalhes da ocorrência</div>
+      </div>
+      <div class="detail-badge" style="background:${meta.color}22; color:${meta.color}">${ICONS[meta.icon]}${meta.label}</div>
+
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.road}</div>
+        <div>
+          <div class="detail-row-label">Rua</div>
+          <div class="detail-row-value">${item.street || 'Não identificada'}</div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.hash}</div>
+        <div>
+          <div class="detail-row-label">CEP</div>
+          <div class="detail-row-value">${item.cep || 'Não encontrado'}</div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.globe}</div>
+        <div>
+          <div class="detail-row-label">Latitude / Longitude</div>
+          <div class="detail-row-value">${isFinite(item.lat) && isFinite(item.lon) ? `${item.lat.toFixed(6)}, ${item.lon.toFixed(6)}` : 'Não disponível'}</div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS[meta.icon]}</div>
+        <div>
+          <div class="detail-row-label">Tipo de ocorrência</div>
+          <div class="detail-row-value">${meta.label}</div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.clock}</div>
+        <div>
+          <div class="detail-row-label">Registrado em</div>
+          <div class="detail-row-value">${formatDateTime(timestamp)}</div>
+        </div>
+      </div>
+      ${item.details ? `
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.warning}</div>
+        <div>
+          <div class="detail-row-label">Detalhes</div>
+          <div class="detail-row-value">${item.details}</div>
+        </div>
+      </div>` : ''}
+      <div class="detail-actions">
+        <button class="action-btn-full btn-danger" onclick='confirmRemoveOccurrence(${JSON.stringify(item.id)})'>${ICONS.close}Remover ocorrência</button>
+      </div>
+    `;
+  }
+
+  // ---------- Remover ocorrência ----------
+  function confirmRemoveOccurrence(id) {
+    const ok = window.confirm('Remover esta ocorrência do mapa? Essa ação não pode ser desfeita.');
+    if (ok) removeOccurrence(id);
+  }
+
+  function removeOccurrence(id) {
+    if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
+
+    // Ocorrências reportadas pelo usuário
+    const reportIdx = reports.findIndex(r => r.id === id);
+    if (reportIdx > -1) reports.splice(reportIdx, 1);
+    const markerIdx = reportMarkers.findIndex(m => m.__occurrenceId === id);
+    if (markerIdx > -1) {
+      map.removeLayer(reportMarkers[markerIdx]);
+      reportMarkers.splice(markerIdx, 1);
+    }
+
+    // Ocorrências da planilha
+    const sheetIdx = sheetOccurrences.findIndex(o => o.id === id);
+    if (sheetIdx > -1) sheetOccurrences.splice(sheetIdx, 1);
+    const refIdx = sheetMarkerRefs.findIndex(ref => ref.item.id === id);
+    if (refIdx > -1) {
+      map.removeLayer(sheetMarkerRefs[refIdx].marker);
+      sheetMarkerRefs.splice(refIdx, 1);
+    }
+
+    showBanner('Ocorrência removida.', false);
+    resetSidebar();
+  }
+
+  // ---------- Marcar ocorrência (selecionar local) ----------
+  function startPickLocation() {
+    if (isPicking) { cancelPickLocation(); return; }
+    isPicking = true;
+    document.getElementById('map').classList.add('picking-mode');
+    document.getElementById('pickingBanner').classList.add('show');
+    document.getElementById('reportCtaBtn').classList.add('picking');
+    document.getElementById('reportCtaIcon').innerHTML = ICONS.close;
+    document.getElementById('reportCtaLabel').textContent = 'Cancelar seleção';
+  }
+
+  function cancelPickLocation() {
+    isPicking = false;
+    document.getElementById('map').classList.remove('picking-mode');
+    document.getElementById('pickingBanner').classList.remove('show');
+    document.getElementById('reportCtaBtn').classList.remove('picking');
+    document.getElementById('reportCtaIcon').innerHTML = ICONS.flag;
+    document.getElementById('reportCtaLabel').textContent = 'Marcar ocorrência';
+  }
+
+  map.on('click', async (e) => {
+    if (!isPicking) return;
+    const { lat, lng } = e.latlng;
+    cancelPickLocation();
+    showBanner('Buscando endereço do local selecionado...', false);
+    const addr = await reverseGeocode(lat, lng);
+    pendingReport = { lat, lon: lng, ...addr };
+    document.getElementById('messageBanner').style.display = 'none';
+    openReportModal();
+  });
+
+  function reportAtCurrentTarget() {
+    if (!currentReportTarget) { showBanner('Selecione um local primeiro.', true); return; }
+    pendingReport = { lat: currentReportTarget.lat, lon: currentReportTarget.lon, street: currentReportTarget.street, cep: currentReportTarget.cep || 'Não informado', bairro: '', cidade: '' };
+    openReportModal();
+  }
+
+  // ---------- Modal de reporte ----------
+  function openReportModal() {
+    const target = pendingReport || currentReportTarget;
+    document.getElementById('addressPreviewStreet').textContent = target ? (target.street || target.title || 'Local selecionado') : 'Local selecionado';
+    const cepText = target && target.cep ? `CEP ${target.cep}` : 'CEP não informado';
+    const coordsText = target && isFinite(target.lat) && isFinite(target.lon) ? ` · ${target.lat.toFixed(6)}, ${target.lon.toFixed(6)}` : '';
+    document.getElementById('addressPreviewCep').textContent = cepText + coordsText;
+    document.getElementById('reportModal').classList.add('open');
+  }
+  function closeReportModal() {
+    document.getElementById('reportModal').classList.remove('open');
+    document.getElementById('reportDetails').value = '';
+    pendingReport = null;
+  }
+
+  function submitReport() {
+    const target = pendingReport || currentReportTarget;
+    if (!target) { showBanner('Selecione um local no mapa antes de enviar.', true); closeReportModal(); return; }
+
+    const category = document.getElementById('reportReason').value;
+    const details = document.getElementById('reportDetails').value.trim();
+    const timestamp = new Date();
+
+    const report = {
+      id: 'user-' + Date.now(),
+      source: 'user',
+      lat: target.lat, lon: target.lon,
+      category,
+      street: target.street || target.title || 'Rua não identificada',
+      cep: target.cep || 'Não informado',
+      bairro: target.bairro || '',
+      cidade: target.cidade || '',
+      details,
+      timestamp
+    };
+    reports.push(report);
+
+    const marker = L.marker([report.lat, report.lon], { icon: divIcon(category) }).addTo(map);
+    marker.__occurrenceId = report.id;
+    bindOccurrencePopup(marker, report);
+    marker.on('click', () => focusOccurrence(report));
+    reportMarkers.push(marker);
+
+    closeReportModal();
+    showBanner('Ocorrência registrada com sucesso. Obrigado por contribuir!', false);
+    focusOccurrence(report);
+  }
+
+  // ---------- Localização do usuário ----------
+  function locateMe() {
+    if (!navigator.geolocation) { showBanner('Geolocalização não suportada neste navegador.', true); return; }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        map.flyTo([latitude, longitude], 16, { duration: 1.1 });
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = L.circleMarker([latitude, longitude], { radius: 8, color: '#0a84ff', fillColor: '#0a84ff', fillOpacity: 0.9, weight: 3 }).addTo(map).bindPopup('Você está aqui');
+      },
+      () => showBanner('Não foi possível obter sua localização.', true)
+    );
+  }
+
+  // ---------- Inicialização ----------
+  applyTheme('dark');
+  resetSidebar();
+  initSheetData();
+
+  // Registro do Service Worker (permite instalar como app / funcionar como PWA)
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./service-worker.js').catch((err) => {
+        console.warn('Falha ao registrar o service worker:', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>
