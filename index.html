@@ -2,16 +2,8 @@
 <html lang="pt-BR" data-theme="dark">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>GeoAlerta</title>
-<link rel="manifest" href="./manifest.json" />
-<link rel="icon" href="./icon-192.png" />
-<link rel="apple-touch-icon" href="./icon-192.png" />
-<meta name="theme-color" content="#0a84ff" />
-<meta name="mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="GeoAlerta" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mapa de Ocorrências</title>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -104,7 +96,7 @@
 
   .sidebar-header { padding: 16px 18px 10px 18px; }
   .sidebar-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 14px; }
-  .app-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .app-title-block { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
   .sidebar-title-row h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
   .app-subtitle { font-size: 12.5px; color: var(--text-secondary); font-weight: 500; }
   .icon-btn {
@@ -114,6 +106,59 @@
     cursor: pointer; flex-shrink: 0;
   }
   .icon-btn:active { background-color: var(--bg-card-hover); }
+
+  /* ---------- Bolinha de perfil ---------- */
+  .profile-avatar-btn {
+    width: 34px; height: 34px; border-radius: 50%; flex-shrink: 0;
+    background-color: var(--bg-card); border: 1.5px solid var(--border);
+    color: var(--text-primary); display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 700; cursor: pointer; overflow: hidden;
+  }
+  .profile-avatar-btn:active { opacity: 0.85; }
+  .profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+
+  .profile-photo-preview {
+    width: 76px; height: 76px; border-radius: 50%; overflow: hidden;
+    background-color: var(--bg-card-hover); border: 1.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    color: var(--text-secondary); font-size: 24px; font-weight: 700; flex-shrink: 0;
+  }
+  .profile-photo-preview img { width: 100%; height: 100%; object-fit: cover; }
+  .profile-photo-actions { display: flex; gap: 8px; margin-top: 12px; }
+  .profile-photo-actions .action-btn-full { margin-top: 0; width: auto; padding: 8px 13px; font-size: 12.5px; }
+
+  /* ---------- Toggles do filtro de exibição ---------- */
+  .toggle-row {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 2px; border-bottom: 1px solid var(--border-soft);
+  }
+  .toggle-row:last-child { border-bottom: none; }
+  .toggle-row-label { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 500; min-width: 0; }
+  .toggle-row-icon {
+    width: 26px; height: 26px; border-radius: 7px; flex-shrink: 0;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .toggle-row-icon .icon { width: 14px; height: 14px; }
+  .toggle-switch { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .toggle-switch input { opacity: 0; width: 0; height: 0; position: absolute; }
+  .toggle-slider {
+    position: absolute; inset: 0; background-color: var(--border);
+    border-radius: 999px; cursor: pointer; transition: background-color .18s;
+  }
+  .toggle-slider::before {
+    content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px;
+    background: #fff; border-radius: 50%; transition: transform .18s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .toggle-switch input:checked + .toggle-slider { background-color: var(--success); }
+  .toggle-switch input:checked + .toggle-slider::before { transform: translateX(18px); }
+  .filter-quick-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+  .filter-quick-actions button {
+    flex: 1; background-color: var(--bg-input); border: 1px solid var(--border);
+    color: var(--text-secondary); border-radius: 9px; padding: 7px; font-size: 12px;
+    font-weight: 600; cursor: pointer;
+  }
+  .filter-quick-actions button:active { background-color: var(--bg-card-hover); }
 
   .search-bar {
     display: flex; align-items: center;
@@ -294,6 +339,14 @@
   .map-ctrl-group .map-ctrl-btn:last-child { border-bottom: none; }
   .map-ctrl-btn:active { background-color: var(--bg-card-hover); }
   .map-ctrl-btn.active-theme { color: #ffb300; }
+  .map-ctrl-btn.profile-avatar-btn {
+    border-radius: 50%; overflow: hidden; font-size: 13px; font-weight: 700;
+    background-color: var(--bg-card-hover);
+  }
+  .map-ctrl-btn.profile-avatar-btn img { width: 100%; height: 100%; object-fit: cover; }
+  .map-ctrl-group.profile-ctrl-group {
+    background: transparent; border: none; box-shadow: none; border-radius: 50%;
+  }
 
   .map-attribution {
     position: absolute; bottom: 8px; left: 8px; z-index: 800;
@@ -362,6 +415,10 @@
     .sidebar.collapsed { margin-left: -88vw; }
   }
 </style>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<meta name="theme-color" content="#0a84ff">
 </head>
 <body>
 
@@ -405,7 +462,7 @@
 
     <div class="picking-banner" id="pickingBanner">
       <span id="pickingBannerIcon"></span>
-      <span>Clique no mapa para marcar o local da ocorrência</span>
+      <span id="pickingBannerText">Clique no mapa para marcar o local da ocorrência</span>
     </div>
 
     <div class="message-banner-float" id="messageBanner"></div>
@@ -415,12 +472,18 @@
         <button class="map-ctrl-btn" id="themeToggleBtn" title="Alternar tema"></button>
       </div>
       <div class="map-ctrl-group">
+        <button class="map-ctrl-btn" id="filterBtn" title="Filtrar exibição" onclick="openFilterModal()"></button>
+      </div>
+      <div class="map-ctrl-group">
         <button class="map-ctrl-btn" id="locateBtn" title="Minha localização"></button>
         <button class="map-ctrl-btn" id="layerBtn" title="Alternar camada do mapa"></button>
       </div>
       <div class="map-ctrl-group">
         <button class="map-ctrl-btn" id="zoomInBtn" title="Aumentar zoom"></button>
         <button class="map-ctrl-btn" id="zoomOutBtn" title="Diminuir zoom"></button>
+      </div>
+      <div class="map-ctrl-group profile-ctrl-group">
+        <button class="map-ctrl-btn profile-avatar-btn" id="profileBtn" title="Perfil" onclick="openProfileModal()"></button>
       </div>
     </div>
 
@@ -454,6 +517,93 @@
   </div>
 </div>
 
+<!-- ===================== MODAL DE LOCAL SALVO ===================== -->
+<div class="modal-overlay" id="placeModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Adicionar local</h2>
+      <button class="icon-btn" id="placeModalCloseBtn" onclick="closePlaceModal()"></button>
+    </div>
+
+    <div class="address-preview" id="placeAddressPreview">
+      <span id="placeAddressPreviewIcon"></span>
+      <div class="address-preview-text">
+        <div class="address-preview-street" id="placeAddressPreviewStreet">—</div>
+        <div class="address-preview-cep" id="placeAddressPreviewCep">—</div>
+      </div>
+    </div>
+
+    <button class="action-btn-full btn-secondary" onclick="usePlaceCurrentLocation()" style="margin-bottom:14px;">
+      <span id="placeLocateIcon"></span>Usar minha localização atual
+    </button>
+
+    <div class="field-label">Tipo de local</div>
+    <select id="placeType" onchange="handlePlaceTypeChange()"></select>
+
+    <div class="field-label">Nome do local</div>
+    <input type="text" id="placeNameInput" placeholder="Ex: Casa da vovó" maxlength="30"
+      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; margin-bottom:14px; outline:none;" />
+
+    <input type="hidden" id="placeRadiusInput" value="650" />
+
+    <button class="action-btn-full btn-primary" onclick="savePlace()">Salvar local</button>
+    <button class="action-btn-full btn-secondary" onclick="closePlaceModal()">Cancelar</button>
+  </div>
+</div>
+
+<!-- ===================== MODAL DE PERFIL ===================== -->
+<div class="modal-overlay" id="profileModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Editar Perfil</h2>
+      <button class="icon-btn" id="profileModalCloseBtn" onclick="closeProfileModal()"></button>
+    </div>
+
+    <div style="display:flex; flex-direction:column; align-items:center;">
+      <div class="profile-photo-preview" id="profilePhotoPreview"></div>
+      <div class="profile-photo-actions">
+        <button class="action-btn-full btn-secondary" onclick="document.getElementById('profilePhotoInput').click()"><span id="profilePhotoIcon"></span>Escolher foto</button>
+        <input type="file" id="profilePhotoInput" accept="image/*" style="display:none" onchange="handleProfilePhotoChange(event)" />
+        <button class="action-btn-full btn-danger" onclick="removeProfilePhoto()"><span id="profileTrashIcon"></span>Remover foto</button>
+      </div>
+      <div style="font-size:11.5px; color:var(--text-tertiary); text-align:center; margin-top:10px;">Foto opcional. Sem foto, usaremos as iniciais.</div>
+    </div>
+
+    <div class="field-label" style="margin-top:18px;">Nome / Apelido</div>
+    <input type="text" id="profileNameInput" placeholder="Seu nome" maxlength="40"
+      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;" />
+    <div style="font-size:11.5px; color:var(--text-tertiary); margin-top:6px;" id="profileSinceLabel"></div>
+
+    <div class="field-label" style="margin-top:14px;">Estado</div>
+    <select id="profileStateInput"
+      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;"></select>
+
+    <div class="field-label" style="margin-top:14px;">Cidade</div>
+    <input type="text" id="profileCityInput" placeholder="Ex: Joinville" maxlength="60"
+      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;" />
+    <div style="font-size:11.5px; color:var(--text-tertiary); margin-top:6px;">Seu estado e cidade ficam destacados em azul no mapa.</div>
+
+    <button class="action-btn-full btn-primary" style="margin-top:16px;" onclick="saveProfile()">Salvar Perfil</button>
+    <button class="action-btn-full btn-secondary" onclick="closeProfileModal()">Cancelar</button>
+    <button class="action-btn-full btn-danger" onclick="deleteProfile()">Excluir perfil local</button>
+  </div>
+</div>
+
+<!-- ===================== MODAL DE FILTRO ===================== -->
+<div class="modal-overlay" id="filterModal">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h2>Filtrar exibição</h2>
+      <button class="icon-btn" id="filterModalCloseBtn" onclick="closeFilterModal()"></button>
+    </div>
+    <div class="filter-quick-actions">
+      <button onclick="setAllCategoriesVisible(true)">Mostrar tudo</button>
+      <button onclick="setAllCategoriesVisible(false)">Ocultar tudo</button>
+    </div>
+    <div id="filterTogglesList"></div>
+  </div>
+</div>
+
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   // ---------- Ícones (line art, sem preenchimento) ----------
@@ -482,21 +632,45 @@
     road: '<svg class="icon icon-sm" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><path d="M8 3 L4 21"/><path d="M16 3 L20 21"/><line x1="12" y1="3" x2="12" y2="7"/><line x1="12" y1="10.5" x2="12" y2="13.5"/><line x1="12" y1="17" x2="12" y2="20"/></svg>',
     sun: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="4.2" x2="6" y2="6"/><line x1="18" y1="18" x2="19.8" y2="19.8"/><line x1="4.2" y1="19.8" x2="6" y2="18"/><line x1="18" y1="6" x2="19.8" y2="4.2"/></svg>',
     moon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>',
-    sidebarIcon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9.5" y1="4" x2="9.5" y2="20"/></svg>'
+    sidebarIcon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linejoin="round"><rect x="3" y="4" width="18" height="16" rx="2.5"/><line x1="9.5" y1="4" x2="9.5" y2="20"/></svg>',
+    camera: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3.2l1.8-2.6h6l1.8 2.6H20v11H4z"/><circle cx="12" cy="13.2" r="3.4"/></svg>',
+    trash: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"/><path d="M6.5 7 7.3 20h9.4l0.8-13"/><path d="M9.5 7V4.3h5V7"/></svg>',
+    filterIcon: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="20" y2="18"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="9" cy="18" r="2"/></svg>',
+    user: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.4-4.6 5-6.2 8-6.2s6.6 1.6 8 6.2"/></svg>',
+    home: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 L12 4 L20 11 V20 H4 Z"/><path d="M9.5 20v-6h5v6"/></svg>',
+    briefcase: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="8" width="18" height="12" rx="2"/><path d="M8.5 8V6a2 2 0 0 1 2-2h3a2 2 0 0 1 2 2v2"/><line x1="3" y1="13" x2="21" y2="13"/></svg>',
+    school: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8 L12 3 L22 8 L12 13 Z"/><path d="M6 10.5V16c0 1.4 2.7 3 6 3s6-1.6 6-3v-5.5"/><line x1="22" y1="8" x2="22" y2="15"/></svg>',
+    bell: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M6 10a6 6 0 0 1 12 0c0 4 1.5 5.5 1.5 5.5H4.5S6 14 6 10Z"/><path d="M9.5 18.5a2.5 2.5 0 0 0 5 0"/></svg>'
   };
 
   // ---------- Tipos de ocorrência (cores e ícones) ----------
   const CATEGORY_META = {
     all:          { icon: 'map',       label: 'Todas as ocorrências',        color: '#98989d' },
-    alagamento:   { icon: 'wave',      label: 'Alagamento',                  color: '#64d2ff' }, // azul claro
-    inundacao:    { icon: 'flood',     label: 'Inundação',                   color: '#1e3a8a' }, // azul escuro
+    alagamento:   { icon: 'wave',      label: 'Inundação/Alagamento',        color: '#64d2ff' }, // azul claro
     bueiro:       { icon: 'drain',     label: 'Bueiro entupido',             color: '#bf5af2' },
     rio:          { icon: 'riverUp',   label: 'Rio/córrego transbordando',   color: '#32ade6' },
     deslizamento: { icon: 'landslide', label: 'Deslizamento',                color: '#ff9f0a' },
     via:          { icon: 'warning',   label: 'Via interditada',             color: '#ff453a' },
     default:      { icon: 'pin',       label: 'Local',                       color: '#8e8e93' }
   };
-  const REPORTABLE_CATEGORIES = ['alagamento', 'inundacao', 'bueiro', 'rio', 'deslizamento', 'via'];
+  const REPORTABLE_CATEGORIES = ['alagamento', 'bueiro', 'rio', 'deslizamento', 'via'];
+
+  // ---------- Tipos de local salvo (casa, trabalho, escola etc.) ----------
+  const PLACE_TYPES = {
+    casa:      { icon: 'home',      label: 'Casa',      color: '#0a84ff' },
+    trabalho:  { icon: 'briefcase', label: 'Trabalho',  color: '#ff9f0a' },
+    escola:    { icon: 'school',    label: 'Escola',    color: '#bf5af2' },
+    outro:     { icon: 'pin',       label: 'Outro',     color: '#30d158' }
+  };
+
+  // Preenche o <select> do modal de local salvo
+  const placeTypeSelect = document.getElementById('placeType');
+  Object.keys(PLACE_TYPES).forEach(key => {
+    const opt = document.createElement('option');
+    opt.value = key;
+    opt.textContent = PLACE_TYPES[key].label;
+    placeTypeSelect.appendChild(opt);
+  });
 
   // Preenche o <select> do modal de reporte
   const reasonSelect = document.getElementById('reportReason');
@@ -525,6 +699,129 @@
   document.getElementById('layerBtn').innerHTML = ICONS.layers;
   document.getElementById('zoomInBtn').innerHTML = ICONS.plus;
   document.getElementById('zoomOutBtn').innerHTML = ICONS.minus;
+  document.getElementById('profileModalCloseBtn').innerHTML = ICONS.close;
+  document.getElementById('filterModalCloseBtn').innerHTML = ICONS.close;
+  document.getElementById('profilePhotoIcon').innerHTML = ICONS.camera;
+  document.getElementById('profileTrashIcon').innerHTML = ICONS.trash;
+  document.getElementById('placeModalCloseBtn').innerHTML = ICONS.close;
+  document.getElementById('placeAddressPreviewIcon').innerHTML = ICONS.pin;
+  document.getElementById('placeLocateIcon').innerHTML = ICONS.target;
+
+  // ---------- Perfil do usuário (salvo localmente no dispositivo) ----------
+  let userProfile = { name: '', photo: null, since: null, state: '', city: '' };
+  try {
+    const savedProfile = JSON.parse(localStorage.getItem('geoalerta_profile') || 'null');
+    if (savedProfile) userProfile = Object.assign({ state: '', city: '' }, savedProfile);
+  } catch (e) { /* ignora */ }
+  if (!userProfile.since) {
+    userProfile.since = new Date().toISOString();
+    localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
+  }
+  let tempProfilePhoto = userProfile.photo;
+
+  const BRAZIL_STATES = [
+    ['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],['CE','Ceará'],
+    ['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],['MA','Maranhão'],['MT','Mato Grosso'],
+    ['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],
+    ['PE','Pernambuco'],['PI','Piauí'],['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],
+    ['RS','Rio Grande do Sul'],['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],
+    ['SP','São Paulo'],['SE','Sergipe'],['TO','Tocantins']
+  ];
+  function populateStateSelect() {
+    const sel = document.getElementById('profileStateInput');
+    sel.innerHTML = '<option value="">Selecione o estado</option>' +
+      BRAZIL_STATES.map(([uf, name]) => `<option value="${uf}">${name}</option>`).join('');
+  }
+  populateStateSelect();
+
+  function getInitials(name) {
+    const parts = name.trim().split(/\s+/).filter(Boolean);
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  }
+
+  function renderProfileAvatar() {
+    const btn = document.getElementById('profileBtn');
+    if (userProfile.photo) {
+      btn.innerHTML = `<img src="${userProfile.photo}" alt="Perfil" />`;
+    } else if (userProfile.name) {
+      btn.innerHTML = getInitials(userProfile.name);
+    } else {
+      btn.innerHTML = ICONS.user;
+    }
+  }
+  renderProfileAvatar();
+
+  function renderProfilePhotoPreview(photoDataUrl) {
+    const preview = document.getElementById('profilePhotoPreview');
+    if (photoDataUrl) {
+      preview.innerHTML = `<img src="${photoDataUrl}" alt="Foto de perfil" />`;
+    } else {
+      const name = document.getElementById('profileNameInput').value;
+      preview.innerHTML = name ? getInitials(name) : ICONS.user;
+    }
+  }
+
+  function formatDatePtBr(isoString) {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    return d.toLocaleDateString('pt-BR');
+  }
+
+  function openProfileModal() {
+    tempProfilePhoto = userProfile.photo;
+    document.getElementById('profileNameInput').value = userProfile.name || '';
+    document.getElementById('profileSinceLabel').textContent = 'Perfil ativo desde ' + formatDatePtBr(userProfile.since);
+    document.getElementById('profileStateInput').value = userProfile.state || '';
+    document.getElementById('profileCityInput').value = userProfile.city || '';
+    renderProfilePhotoPreview(tempProfilePhoto);
+    document.getElementById('profileModal').classList.add('open');
+  }
+  function closeProfileModal() {
+    document.getElementById('profileModal').classList.remove('open');
+  }
+
+  function handleProfilePhotoChange(event) {
+    const file = event.target.files && event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      tempProfilePhoto = reader.result;
+      renderProfilePhotoPreview(tempProfilePhoto);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function removeProfilePhoto() {
+    tempProfilePhoto = null;
+    document.getElementById('profilePhotoInput').value = '';
+    renderProfilePhotoPreview(null);
+  }
+
+  function saveProfile() {
+    userProfile.name = document.getElementById('profileNameInput').value.trim();
+    userProfile.photo = tempProfilePhoto;
+    const newState = document.getElementById('profileStateInput').value;
+    const newCity = document.getElementById('profileCityInput').value.trim();
+    const locationChanged = newState !== userProfile.state || newCity !== userProfile.city;
+    userProfile.state = newState;
+    userProfile.city = newCity;
+    localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
+    renderProfileAvatar();
+    closeProfileModal();
+    if (locationChanged) highlightUserLocation();
+  }
+
+  function deleteProfile() {
+    if (!confirm('Tem certeza que deseja excluir seu perfil local? Isso apaga seu nome e foto salvos neste dispositivo.')) return;
+    userProfile = { name: '', photo: null, since: new Date().toISOString(), state: '', city: '' };
+    tempProfilePhoto = null;
+    localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
+    renderProfileAvatar();
+    closeProfileModal();
+    clearLocationHighlight();
+  }
 
   // ---------- Mapa ----------
   const TILE_LAYERS = {
@@ -542,12 +839,137 @@
     currentLayerKey = key;
     map.removeLayer(currentTileLayer);
     currentTileLayer = L.tileLayer(TILE_LAYERS[key].url, { maxZoom: 19, attribution: TILE_LAYERS[key].attribution }).addTo(map);
+    if (riversLayer) riversLayer.bringToFront();
   }
   // Alterna diretamente entre o mapa normal (no tema atual) e o mapa de satélite —
   // sem passar por uma etapa intermediária de claro/escuro.
   function toggleLayer() {
     setLayer(currentLayerKey === 'satellite' ? currentTheme : 'satellite');
   }
+
+  // ---------- Rios em destaque (azul claro), carregado automaticamente ao abrir o mapa ----------
+  const RIVER_COLOR = '#8fa3ad';
+  const OVERPASS_ENDPOINTS = [
+    'https://overpass-api.de/api/interpreter',
+    'https://overpass.kumi.systems/api/interpreter'
+  ];
+  let riversLayer = null;
+
+  async function fetchOverpass(query) {
+    for (const endpoint of OVERPASS_ENDPOINTS) {
+      try {
+        const resp = await fetch(endpoint, { method: 'POST', body: query });
+        if (!resp.ok) continue;
+        return await resp.json();
+      } catch (e) { /* tenta o próximo espelho */ }
+    }
+    return null;
+  }
+
+  async function loadRivers() {
+    const bbox = '-26.55,-49.05,-26.05,-48.60'; // sul,oeste,norte,leste — região de Joinville/SC
+    const query = `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bbox}););out geom;`;
+    const data = await fetchOverpass(query);
+    if (!data) { console.warn('Não foi possível carregar os rios (Overpass indisponível).'); return; }
+
+    riversLayer = L.layerGroup().addTo(map);
+    (data.elements || []).forEach(el => {
+      if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) return;
+      const latlngs = el.geometry.map(pt => [pt.lat, pt.lon]);
+      const isMainRiver = el.tags && el.tags.waterway === 'river';
+      const baseWeight = isMainRiver ? 4.2 : 2.6;
+
+      // Camada de brilho por baixo (efeito destaque, como um marca-texto)
+      L.polyline(latlngs, {
+        color: RIVER_COLOR, weight: baseWeight + 5, opacity: 0.25,
+        lineCap: 'round', lineJoin: 'round', interactive: false
+      }).addTo(riversLayer);
+
+      // Linha principal, mais nítida
+      L.polyline(latlngs, {
+        color: RIVER_COLOR, weight: baseWeight, opacity: 0.95,
+        lineCap: 'round', lineJoin: 'round', interactive: false
+      }).addTo(riversLayer);
+    });
+  }
+  loadRivers();
+  map.on('zoomend', () => { if (riversLayer) riversLayer.bringToFront(); });
+
+  // ---------- Destaque do estado/cidade do usuário (limites administrativos) ----------
+  const BOUNDARY_HIGHLIGHT_COLOR = '#0a84ff';
+  const BOUNDARY_NEUTRAL_COLOR = '#ffffff';
+  let boundaryOtherLayer = null;   // limites de outras cidades/estados (branco)
+  let boundaryUserLayer = null;    // limite do estado/cidade do usuário (azul)
+
+  function clearLocationHighlight() {
+    if (boundaryOtherLayer) { map.removeLayer(boundaryOtherLayer); boundaryOtherLayer = null; }
+    if (boundaryUserLayer) { map.removeLayer(boundaryUserLayer); boundaryUserLayer = null; }
+  }
+
+  async function fetchNominatim(params) {
+    try {
+      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
+        format: 'json', polygon_geojson: '1', addressdetails: '1', limit: '1', country: 'Brazil', ...params
+      });
+      const resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return (data && data[0]) || null;
+    } catch (e) { return null; }
+  }
+
+  async function highlightUserLocation() {
+    clearLocationHighlight();
+    const ufName = (BRAZIL_STATES.find(([uf]) => uf === userProfile.state) || [])[1];
+    if (!ufName && !userProfile.city) return;
+
+    // Limite (estado e/ou cidade) do usuário, em azul
+    let userResult = null;
+    if (userProfile.city) {
+      userResult = await fetchNominatim(ufName ? { city: userProfile.city, state: ufName } : { city: userProfile.city });
+    }
+    if (!userResult && ufName) {
+      userResult = await fetchNominatim({ state: ufName });
+    }
+    if (!userResult || !userResult.geojson) return;
+
+    boundaryUserLayer = L.geoJSON(userResult.geojson, {
+      style: { color: BOUNDARY_HIGHLIGHT_COLOR, weight: 3, fillColor: BOUNDARY_HIGHLIGHT_COLOR, fillOpacity: 0.08 }
+    }).addTo(map);
+    boundaryUserLayer.bringToFront();
+
+    // Limites vizinhos (outras cidades/estados), em branco, dentro da área visível do destaque
+    const bounds = boundaryUserLayer.getBounds();
+    if (bounds.isValid()) {
+      map.fitBounds(bounds, { maxZoom: userProfile.city ? 12 : 8 });
+      loadNeighborBoundaries(bounds, userResult.osm_id);
+    }
+  }
+
+  async function loadNeighborBoundaries(bounds, excludeOsmId) {
+    const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
+    const bbox = `${sw.lat},${sw.lng},${ne.lat},${ne.lng}`;
+    const level = userProfile.city ? 8 : 4; // 8 = município, 4 = estado
+    const query = `[out:json][timeout:25];(relation["boundary"="administrative"]["admin_level"="${level}"](${bbox}););out geom;`;
+    const data = await fetchOverpass(query);
+    if (!data) return;
+
+    if (boundaryOtherLayer) map.removeLayer(boundaryOtherLayer);
+    boundaryOtherLayer = L.layerGroup().addTo(map);
+    (data.elements || []).forEach(el => {
+      if (el.id === excludeOsmId) return; // não redesenha o limite do próprio usuário
+      if (!el.members) return;
+      el.members.filter(m => m.type === 'way' && m.geometry).forEach(m => {
+        L.polyline(m.geometry.map(pt => [pt.lat, pt.lon]), {
+          color: BOUNDARY_NEUTRAL_COLOR, weight: 1.2, opacity: 0.7, interactive: false
+        }).addTo(boundaryOtherLayer);
+      });
+    });
+    boundaryOtherLayer.bringToBack();
+    if (boundaryUserLayer) boundaryUserLayer.bringToFront();
+  }
+
+  if (userProfile.state || userProfile.city) highlightUserLocation();
 
   // ---------- Tema claro/escuro ----------
   let currentTheme = 'dark';
@@ -586,6 +1008,29 @@
   let sheetMarkerRefs = [];   // { item, marker } — marcadores das ocorrências da planilha
   let sheetLoading = true;
 
+  // ---------- Meus locais (casa, trabalho, escola etc.) e alertas por raio ----------
+  let savedPlaces = [];       // { id, type, label, lat, lon, street, cep, radius(m) }
+  let placeCircles = [];      // { place, circle, marker } — círculos/marcadores no mapa
+  let pendingPlace = null;    // local escolhido (mapa ou GPS), aguardando confirmação no modal
+  let isPickingPlace = false;
+  try {
+    const savedPlacesRaw = JSON.parse(localStorage.getItem('geoalerta_places') || 'null');
+    if (Array.isArray(savedPlacesRaw)) savedPlaces = savedPlacesRaw;
+  } catch (e) { /* ignora */ }
+
+  let notifiedPairs = new Set(); // chaves "placeId::occurrenceId" já notificadas (evita repetição)
+  try {
+    const savedNotified = JSON.parse(localStorage.getItem('geoalerta_notified_pairs') || 'null');
+    if (Array.isArray(savedNotified)) notifiedPairs = new Set(savedNotified);
+  } catch (e) { /* ignora */ }
+
+  function persistPlaces() {
+    localStorage.setItem('geoalerta_places', JSON.stringify(savedPlaces));
+  }
+  function persistNotifiedPairs() {
+    localStorage.setItem('geoalerta_notified_pairs', JSON.stringify(Array.from(notifiedPairs)));
+  }
+
   // Vincula ao marcador um popup exibido diretamente no mapa com a rua e o CEP da ocorrência
   function bindOccurrencePopup(marker, item) {
     const street = item.street || 'Rua não identificada';
@@ -608,6 +1053,74 @@
       iconAnchor: [16, 32],
       popupAnchor: [0, -28]
     });
+  }
+
+  // ---------- Marcadores e círculos dos locais salvos ----------
+  function placeDivIcon(type) {
+    const meta = PLACE_TYPES[type] || PLACE_TYPES.outro;
+    return L.divIcon({
+      className: '',
+      html: `<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`,
+      iconSize: [30, 30],
+      iconAnchor: [15, 30],
+      popupAnchor: [0, -26]
+    });
+  }
+
+  function renderPlaceCircles() {
+    placeCircles.forEach(pc => { map.removeLayer(pc.circle); map.removeLayer(pc.marker); });
+    placeCircles = [];
+    savedPlaces.forEach(place => {
+      const type = PLACE_TYPES[place.type] || PLACE_TYPES.outro;
+      const circle = L.circle([place.lat, place.lon], {
+        radius: place.radius, color: type.color, weight: 1.5,
+        fillColor: type.color, fillOpacity: 0.08
+      }).addTo(map);
+      const marker = L.marker([place.lat, place.lon], { icon: placeDivIcon(place.type) }).addTo(map);
+      marker.bindPopup(`
+        <div class="occurrence-popup-title">${place.label}</div>
+        <div class="occurrence-popup-cep">Raio de alerta: ${place.radius} m</div>
+      `);
+      marker.on('click', () => focusPlace(place.id));
+      placeCircles.push({ place, circle, marker });
+    });
+  }
+
+  // ---------- Verificação e notificação de ocorrências dentro do raio de um local ----------
+  function sendBrowserNotification(title, body, item) {
+    if (!('Notification' in window)) return;
+    const fire = () => {
+      const n = new Notification(title, { body, tag: item && item.id ? String(item.id) : undefined });
+      n.onclick = () => { window.focus(); if (item) focusOccurrence(item); };
+    };
+    if (Notification.permission === 'granted') fire();
+    else if (Notification.permission !== 'denied') {
+      Notification.requestPermission().then(p => { if (p === 'granted') fire(); });
+    }
+  }
+
+  function notifyOccurrenceNearPlace(item, place, distM) {
+    const key = place.id + '::' + item.id;
+    if (notifiedPairs.has(key)) return;
+    notifiedPairs.add(key);
+    persistNotifiedPairs();
+    const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
+    const title = `Ocorrência perto de "${place.label}"`;
+    const body = `${meta.label} · ${item.street || 'Local não identificado'} · a ${formatDistance(distM / 1000)}`;
+    sendBrowserNotification(title, body, item);
+    showBanner(`⚠️ ${meta.label} perto de "${place.label}" (${formatDistance(distM / 1000)})`, true);
+  }
+
+  function checkOccurrenceAgainstPlace(item, place) {
+    if (!item || !isFinite(item.lat) || !isFinite(item.lon)) return;
+    const distM = distanceKm(place.lat, place.lon, item.lat, item.lon) * 1000;
+    if (distM <= place.radius) notifyOccurrenceNearPlace(item, place, distM);
+  }
+  function checkOccurrenceAgainstAllPlaces(item) {
+    savedPlaces.forEach(place => checkOccurrenceAgainstPlace(item, place));
+  }
+  function checkAllOccurrencesAgainstPlace(place) {
+    [...sheetOccurrences, ...reports].forEach(item => checkOccurrenceAgainstPlace(item, place));
   }
 
   function showBanner(text, isError) {
@@ -710,7 +1223,7 @@
   function mapTipoToCategory(rawTipo) {
     const t = normalizeText(rawTipo);
     if (t === '1' || t === 'alagamento') return 'alagamento';
-    if (t === '2' || t.includes('inundacao')) return 'inundacao';
+    if (t === '2' || t.includes('inundacao')) return 'alagamento';
     return null;
   }
 
@@ -763,8 +1276,29 @@
     }
   }
 
+  // ---------- Filtro de exibição (ligar/desligar categorias no mapa) ----------
+  let visibleCategories = new Set(Object.keys(CATEGORY_META).filter(k => k !== 'default' && k !== 'all'));
+  let activeCategoryFilter = null; // categoria única selecionada no menu (ou null = "todas")
+  try {
+    const savedVisible = JSON.parse(localStorage.getItem('geoalerta_visible_categories') || 'null');
+    if (Array.isArray(savedVisible)) visibleCategories = new Set(savedVisible);
+  } catch (e) { /* ignora */ }
+
+  function persistVisibleCategories() {
+    localStorage.setItem('geoalerta_visible_categories', JSON.stringify(Array.from(visibleCategories)));
+  }
+
+  function refreshMarkerVisibility() {
+    if (activeCategoryFilter) showOnlySheetCategory(activeCategoryFilter);
+    else showAllSheetMarkers();
+  }
+
   function showAllSheetMarkers() {
-    sheetMarkerRefs.forEach(ref => { if (!map.hasLayer(ref.marker)) map.addLayer(ref.marker); });
+    sheetMarkerRefs.forEach(ref => {
+      const show = visibleCategories.has(ref.item.category);
+      if (show && !map.hasLayer(ref.marker)) map.addLayer(ref.marker);
+      if (!show && map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
+    });
   }
   function showOnlySheetCategory(category) {
     sheetMarkerRefs.forEach(ref => {
@@ -773,6 +1307,49 @@
       if (!show && map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
     });
   }
+
+  // ---------- Modal de filtro ----------
+  function renderFilterToggles() {
+    const html = Object.keys(CATEGORY_META).filter(k => k !== 'default' && k !== 'all').map(key => {
+      const meta = CATEGORY_META[key];
+      const checked = visibleCategories.has(key) ? 'checked' : '';
+      return `
+        <div class="toggle-row">
+          <div class="toggle-row-label">
+            <div class="toggle-row-icon" style="background:${meta.color}22; color:${meta.color}">${ICONS[meta.icon]}</div>
+            <span>${meta.label}</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" ${checked} onchange="toggleCategoryVisible('${key}', this.checked)" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>`;
+    }).join('');
+    document.getElementById('filterTogglesList').innerHTML = html;
+  }
+
+  function toggleCategoryVisible(category, isVisible) {
+    if (isVisible) visibleCategories.add(category);
+    else visibleCategories.delete(category);
+    persistVisibleCategories();
+    refreshMarkerVisibility();
+  }
+
+  function setAllCategoriesVisible(isVisible) {
+    visibleCategories = new Set(isVisible ? Object.keys(CATEGORY_META).filter(k => k !== 'default' && k !== 'all') : []);
+    persistVisibleCategories();
+    refreshMarkerVisibility();
+    renderFilterToggles();
+  }
+
+  function openFilterModal() {
+    renderFilterToggles();
+    document.getElementById('filterModal').classList.add('open');
+  }
+  function closeFilterModal() {
+    document.getElementById('filterModal').classList.remove('open');
+  }
+  document.getElementById('filterBtn').innerHTML = ICONS.filterIcon;
 
   function renderSheetMarkers() {
     sheetMarkerRefs.forEach(ref => map.removeLayer(ref.marker));
@@ -840,6 +1417,7 @@
       }
       sheetOccurrences = withCoords;
       renderSheetMarkers();
+      sheetOccurrences.forEach(checkOccurrenceAgainstAllPlaces);
       if (sheetOccurrences.length === 0) {
         showBanner('Nenhuma ocorrência encontrada na planilha.', true);
       }
@@ -1023,6 +1601,7 @@
   function resetSidebar() {
     if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
     clearPoiMarkers();
+    activeCategoryFilter = null;
     showAllSheetMarkers();
     currentReportTarget = null;
     document.getElementById('messageBanner').style.display = 'none';
@@ -1038,6 +1617,32 @@
         <div class="menu-item-chevron">${ICONS.chevron}</div>
       </div>`;
     }).join('');
+
+    const placesRowsHtml = savedPlaces.map(p => {
+      const type = PLACE_TYPES[p.type] || PLACE_TYPES.outro;
+      return `<div class="menu-item" onclick="focusPlace('${p.id}')">
+        <div class="menu-item-icon" style="background:${type.color}22; color:${type.color}">${ICONS[type.icon]}</div>
+        <span>${p.label}</span>
+        <span class="menu-item-count">${p.radius} m</span>
+        <div class="menu-item-chevron">${ICONS.chevron}</div>
+      </div>`;
+    }).join('');
+    const placesHtml = `
+      <div class="menu-section-label">Meus locais</div>
+      <div class="menu-list">
+        ${placesRowsHtml}
+        <div class="menu-item" onclick="startPickPlace()">
+          <div class="menu-item-icon" style="background:var(--accent)22; color:var(--accent)">${ICONS.plus}</div>
+          <span>Marcar local no mapa</span>
+          <div class="menu-item-chevron">${ICONS.chevron}</div>
+        </div>
+        <div class="menu-item" onclick="openPlaceModalWithCurrentLocation()">
+          <div class="menu-item-icon" style="background:var(--accent)22; color:var(--accent)">${ICONS.target}</div>
+          <span>Usar minha localização atual</span>
+          <div class="menu-item-chevron">${ICONS.chevron}</div>
+        </div>
+      </div>
+    `;
 
     let recentHtml = '';
     if (reports.length > 0) {
@@ -1057,6 +1662,7 @@
       <div class="menu-section-label">Tipos de ocorrência</div>
       <div class="menu-list">${listHtml}</div>
       ${loadingHtml}
+      ${placesHtml}
       ${recentHtml}
     `;
   }
@@ -1068,6 +1674,7 @@
   }
 
   function showCategoryFromSheet(category) {
+    activeCategoryFilter = category;
     const meta = CATEGORY_META[category];
     const container = document.getElementById('sidebarContent');
     const items = sheetOccurrences.filter(o => o.category === category);
@@ -1229,8 +1836,10 @@
   // ---------- Marcar ocorrência (selecionar local) ----------
   function startPickLocation() {
     if (isPicking) { cancelPickLocation(); return; }
+    if (isPickingPlace) cancelPickPlace();
     isPicking = true;
     document.getElementById('map').classList.add('picking-mode');
+    document.getElementById('pickingBannerText').textContent = 'Clique no mapa para marcar o local da ocorrência';
     document.getElementById('pickingBanner').classList.add('show');
     document.getElementById('reportCtaBtn').classList.add('picking');
     document.getElementById('reportCtaIcon').innerHTML = ICONS.close;
@@ -1246,7 +1855,34 @@
     document.getElementById('reportCtaLabel').textContent = 'Marcar ocorrência';
   }
 
+  // ---------- Marcar local salvo (casa, trabalho, escola etc.) ----------
+  function startPickPlace() {
+    if (isPickingPlace) { cancelPickPlace(); return; }
+    if (isPicking) cancelPickLocation();
+    isPickingPlace = true;
+    document.getElementById('map').classList.add('picking-mode');
+    document.getElementById('pickingBannerText').textContent = 'Clique no mapa para marcar seu local (ex: casa, trabalho, escola)';
+    document.getElementById('pickingBanner').classList.add('show');
+  }
+
+  function cancelPickPlace() {
+    isPickingPlace = false;
+    document.getElementById('map').classList.remove('picking-mode');
+    document.getElementById('pickingBanner').classList.remove('show');
+    document.getElementById('pickingBannerText').textContent = 'Clique no mapa para marcar o local da ocorrência';
+  }
+
   map.on('click', async (e) => {
+    if (isPickingPlace) {
+      const { lat, lng } = e.latlng;
+      cancelPickPlace();
+      showBanner('Buscando endereço do local selecionado...', false);
+      const addr = await reverseGeocode(lat, lng);
+      pendingPlace = { lat, lon: lng, ...addr };
+      document.getElementById('messageBanner').style.display = 'none';
+      openPlaceModal();
+      return;
+    }
     if (!isPicking) return;
     const { lat, lng } = e.latlng;
     cancelPickLocation();
@@ -1306,9 +1942,157 @@
     marker.on('click', () => focusOccurrence(report));
     reportMarkers.push(marker);
 
+    checkOccurrenceAgainstAllPlaces(report);
+
     closeReportModal();
     showBanner('Ocorrência registrada com sucesso. Obrigado por contribuir!', false);
     focusOccurrence(report);
+  }
+
+  // ---------- Modal de local salvo ----------
+  function handlePlaceTypeChange() {
+    const type = document.getElementById('placeType').value;
+    const nameInput = document.getElementById('placeNameInput');
+    const isDefaultLabel = !nameInput.value.trim() || Object.values(PLACE_TYPES).some(t => t.label === nameInput.value.trim());
+    if (isDefaultLabel) nameInput.value = PLACE_TYPES[type].label;
+  }
+
+  function refreshPlaceModalPreview() {
+    const target = pendingPlace;
+    document.getElementById('placeAddressPreviewStreet').textContent = target ? (target.street || 'Local selecionado') : 'Nenhum local selecionado ainda';
+    const cepText = target && target.cep ? `CEP ${target.cep}` : 'CEP não informado';
+    const coordsText = target && isFinite(target.lat) && isFinite(target.lon) ? ` · ${target.lat.toFixed(6)}, ${target.lon.toFixed(6)}` : '';
+    document.getElementById('placeAddressPreviewCep').textContent = cepText + coordsText;
+  }
+
+  function openPlaceModal() {
+    refreshPlaceModalPreview();
+    document.getElementById('placeType').value = 'casa';
+    document.getElementById('placeNameInput').value = PLACE_TYPES.casa.label;
+    document.getElementById('placeRadiusInput').value = 650;
+    document.getElementById('placeModal').classList.add('open');
+  }
+  function closePlaceModal() {
+    document.getElementById('placeModal').classList.remove('open');
+    pendingPlace = null;
+  }
+
+  function openPlaceModalWithCurrentLocation() {
+    pendingPlace = null;
+    openPlaceModal();
+    usePlaceCurrentLocation();
+  }
+
+  function usePlaceCurrentLocation() {
+    if (!navigator.geolocation) { showBanner('Geolocalização não suportada neste navegador.', true); return; }
+    document.getElementById('placeAddressPreviewStreet').textContent = 'Obtendo sua localização atual...';
+    document.getElementById('placeAddressPreviewCep').textContent = '—';
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords;
+        const addr = await reverseGeocode(latitude, longitude);
+        pendingPlace = { lat: latitude, lon: longitude, ...addr };
+        refreshPlaceModalPreview();
+      },
+      () => {
+        showBanner('Não foi possível obter sua localização.', true);
+        refreshPlaceModalPreview();
+      }
+    );
+  }
+
+  function savePlace() {
+    const target = pendingPlace;
+    if (!target) { showBanner('Selecione um local no mapa ou use sua localização atual.', true); return; }
+
+    const type = document.getElementById('placeType').value;
+    const nameInput = document.getElementById('placeNameInput').value.trim();
+    const radius = parseInt(document.getElementById('placeRadiusInput').value, 10);
+    if (!isFinite(radius) || radius < 50) { showBanner('Informe um raio de alerta válido (mínimo 50 m).', true); return; }
+
+    const place = {
+      id: 'place-' + Date.now(),
+      type,
+      label: nameInput || PLACE_TYPES[type].label,
+      lat: target.lat, lon: target.lon,
+      street: target.street || target.title || 'Endereço não identificado',
+      cep: target.cep || '',
+      radius
+    };
+    savedPlaces.push(place);
+    persistPlaces();
+    renderPlaceCircles();
+    checkAllOccurrencesAgainstPlace(place);
+
+    closePlaceModal();
+    showBanner(`"${place.label}" salvo com raio de alerta de ${radius} m.`, false);
+    map.flyTo([place.lat, place.lon], 15, { duration: 1.1 });
+    resetSidebar();
+  }
+
+  // ---------- Detalhe / edição / remoção de local salvo ----------
+  function focusPlace(id) {
+    const place = savedPlaces.find(p => p.id === id);
+    if (!place) return;
+    const type = PLACE_TYPES[place.type] || PLACE_TYPES.outro;
+    map.flyTo([place.lat, place.lon], 15, { duration: 1.1 });
+
+    const container = document.getElementById('sidebarContent');
+    container.innerHTML = `
+      <div class="back-row" onclick="resetSidebar()">
+        <div class="icon-btn">${ICONS.back}</div>
+        <div class="back-row-title">Detalhes do local</div>
+      </div>
+      <div class="detail-badge" style="background:${type.color}22; color:${type.color}">${ICONS[type.icon]}${place.label}</div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.road}</div>
+        <div>
+          <div class="detail-row-label">Endereço</div>
+          <div class="detail-row-value">${place.street || 'Não identificado'}</div>
+        </div>
+      </div>
+      <div class="detail-row">
+        <div class="detail-row-icon">${ICONS.globe}</div>
+        <div>
+          <div class="detail-row-label">Latitude / Longitude</div>
+          <div class="detail-row-value">${place.lat.toFixed(6)}, ${place.lon.toFixed(6)}</div>
+        </div>
+      </div>
+      <div class="field-label" style="margin-top:14px;">Raio de alerta (metros)</div>
+      <input type="number" id="editPlaceRadiusInput" value="${place.radius}" min="50" max="5000" step="50"
+        style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;" />
+      <div class="detail-actions">
+        <button class="action-btn-full btn-primary" onclick="updatePlaceRadius('${place.id}')">${ICONS.bell}Salvar raio</button>
+        <button class="action-btn-full btn-danger" onclick="confirmRemovePlace('${place.id}')">${ICONS.close}Remover local</button>
+      </div>
+    `;
+  }
+
+  function updatePlaceRadius(id) {
+    const place = savedPlaces.find(p => p.id === id);
+    if (!place) return;
+    const val = parseInt(document.getElementById('editPlaceRadiusInput').value, 10);
+    if (!isFinite(val) || val < 50) { showBanner('Informe um raio válido (mínimo 50 m).', true); return; }
+    place.radius = val;
+    persistPlaces();
+    renderPlaceCircles();
+    checkAllOccurrencesAgainstPlace(place);
+    showBanner('Raio de alerta atualizado.', false);
+    focusPlace(id);
+  }
+
+  function confirmRemovePlace(id) {
+    const ok = window.confirm('Remover este local salvo? Você deixará de receber alertas para ele.');
+    if (ok) removePlace(id);
+  }
+
+  function removePlace(id) {
+    const idx = savedPlaces.findIndex(p => p.id === id);
+    if (idx > -1) savedPlaces.splice(idx, 1);
+    persistPlaces();
+    renderPlaceCircles();
+    showBanner('Local removido.', false);
+    resetSidebar();
   }
 
   // ---------- Localização do usuário ----------
@@ -1327,15 +2111,14 @@
 
   // ---------- Inicialização ----------
   applyTheme('dark');
+  renderPlaceCircles();
   resetSidebar();
   initSheetData();
-
-  // Registro do Service Worker (permite instalar como app / funcionar como PWA)
+</script>
+<script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch((err) => {
-        console.warn('Falha ao registrar o service worker:', err);
-      });
+      navigator.serviceWorker.register('./service-worker.js').catch((e) => console.warn('SW falhou:', e));
     });
   }
 </script>

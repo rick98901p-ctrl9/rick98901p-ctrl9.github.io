@@ -1,5 +1,6 @@
-const CACHE_NAME = 'geoalerta-shell-v1';
+const CACHE_NAME = 'geoalerta-cache-v1';
 const APP_SHELL = [
+  './',
   './index.html',
   './manifest.json',
   './icon-192.png',
@@ -17,35 +18,26 @@ self.addEventListener('install', (event) => {
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) =>
-      Promise.all(keys.filter((k) => k !== CACHE_NAME).map((k) => caches.delete(k)))
+      Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))
     )
   );
   self.clients.claim();
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = new URL(event.request.url);
-  const isAppShell = url.origin === self.location.origin;
-
-  if (!isAppShell) {
-    // Tiles do mapa, planilha e APIs de geocodificação: sempre buscar da rede
-    // (dados precisam estar atualizados; não faz sentido cachear).
-    return;
-  }
-
-  // Arquivos do próprio app: cache-first com atualização em segundo plano
+  if (event.request.method !== 'GET') return;
   event.respondWith(
     caches.match(event.request).then((cached) => {
-      const network = fetch(event.request)
-        .then((resp) => {
-          if (resp && resp.ok) {
-            const clone = resp.clone();
+      if (cached) return cached;
+      return fetch(event.request)
+        .then((response) => {
+          if (response.ok && event.request.url.startsWith(self.location.origin)) {
+            const clone = response.clone();
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
           }
-          return resp;
+          return response;
         })
-        .catch(() => cached);
-      return cached || network;
+        .catch(() => caches.match('./index.html'));
     })
   );
 });
