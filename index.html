@@ -544,7 +544,10 @@
     <input type="text" id="placeNameInput" placeholder="Ex: Casa da vovó" maxlength="30"
       style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; margin-bottom:14px; outline:none;" />
 
-    <input type="hidden" id="placeRadiusInput" value="650" />
+    <div class="field-label">Raio de alerta (metros)</div>
+    <input type="number" id="placeRadiusInput" value="500" min="50" max="5000" step="50"
+      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; margin-bottom:6px; outline:none;" />
+    <div style="font-size:11.5px; color:var(--text-tertiary); margin-bottom:14px;">Você será notificado sempre que uma ocorrência for registrada dentro desse raio.</div>
 
     <button class="action-btn-full btn-primary" onclick="savePlace()">Salvar local</button>
     <button class="action-btn-full btn-secondary" onclick="closePlaceModal()">Cancelar</button>
@@ -573,15 +576,6 @@
     <input type="text" id="profileNameInput" placeholder="Seu nome" maxlength="40"
       style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;" />
     <div style="font-size:11.5px; color:var(--text-tertiary); margin-top:6px;" id="profileSinceLabel"></div>
-
-    <div class="field-label" style="margin-top:14px;">Estado</div>
-    <select id="profileStateInput"
-      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;"></select>
-
-    <div class="field-label" style="margin-top:14px;">Cidade</div>
-    <input type="text" id="profileCityInput" placeholder="Ex: Joinville" maxlength="60"
-      style="width:100%; background-color:var(--bg-input); border:1px solid var(--border); color:var(--text-primary); border-radius:10px; padding:10px 12px; font-size:14px; outline:none;" />
-    <div style="font-size:11.5px; color:var(--text-tertiary); margin-top:6px;">Seu estado e cidade ficam destacados em azul no mapa.</div>
 
     <button class="action-btn-full btn-primary" style="margin-top:16px;" onclick="saveProfile()">Salvar Perfil</button>
     <button class="action-btn-full btn-secondary" onclick="closeProfileModal()">Cancelar</button>
@@ -708,31 +702,16 @@
   document.getElementById('placeLocateIcon').innerHTML = ICONS.target;
 
   // ---------- Perfil do usuário (salvo localmente no dispositivo) ----------
-  let userProfile = { name: '', photo: null, since: null, state: '', city: '' };
+  let userProfile = { name: '', photo: null, since: null };
   try {
     const savedProfile = JSON.parse(localStorage.getItem('geoalerta_profile') || 'null');
-    if (savedProfile) userProfile = Object.assign({ state: '', city: '' }, savedProfile);
+    if (savedProfile) userProfile = savedProfile;
   } catch (e) { /* ignora */ }
   if (!userProfile.since) {
     userProfile.since = new Date().toISOString();
     localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
   }
   let tempProfilePhoto = userProfile.photo;
-
-  const BRAZIL_STATES = [
-    ['AC','Acre'],['AL','Alagoas'],['AP','Amapá'],['AM','Amazonas'],['BA','Bahia'],['CE','Ceará'],
-    ['DF','Distrito Federal'],['ES','Espírito Santo'],['GO','Goiás'],['MA','Maranhão'],['MT','Mato Grosso'],
-    ['MS','Mato Grosso do Sul'],['MG','Minas Gerais'],['PA','Pará'],['PB','Paraíba'],['PR','Paraná'],
-    ['PE','Pernambuco'],['PI','Piauí'],['RJ','Rio de Janeiro'],['RN','Rio Grande do Norte'],
-    ['RS','Rio Grande do Sul'],['RO','Rondônia'],['RR','Roraima'],['SC','Santa Catarina'],
-    ['SP','São Paulo'],['SE','Sergipe'],['TO','Tocantins']
-  ];
-  function populateStateSelect() {
-    const sel = document.getElementById('profileStateInput');
-    sel.innerHTML = '<option value="">Selecione o estado</option>' +
-      BRAZIL_STATES.map(([uf, name]) => `<option value="${uf}">${name}</option>`).join('');
-  }
-  populateStateSelect();
 
   function getInitials(name) {
     const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -773,8 +752,6 @@
     tempProfilePhoto = userProfile.photo;
     document.getElementById('profileNameInput').value = userProfile.name || '';
     document.getElementById('profileSinceLabel').textContent = 'Perfil ativo desde ' + formatDatePtBr(userProfile.since);
-    document.getElementById('profileStateInput').value = userProfile.state || '';
-    document.getElementById('profileCityInput').value = userProfile.city || '';
     renderProfilePhotoPreview(tempProfilePhoto);
     document.getElementById('profileModal').classList.add('open');
   }
@@ -802,25 +779,18 @@
   function saveProfile() {
     userProfile.name = document.getElementById('profileNameInput').value.trim();
     userProfile.photo = tempProfilePhoto;
-    const newState = document.getElementById('profileStateInput').value;
-    const newCity = document.getElementById('profileCityInput').value.trim();
-    const locationChanged = newState !== userProfile.state || newCity !== userProfile.city;
-    userProfile.state = newState;
-    userProfile.city = newCity;
     localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
     renderProfileAvatar();
     closeProfileModal();
-    if (locationChanged) highlightUserLocation();
   }
 
   function deleteProfile() {
     if (!confirm('Tem certeza que deseja excluir seu perfil local? Isso apaga seu nome e foto salvos neste dispositivo.')) return;
-    userProfile = { name: '', photo: null, since: new Date().toISOString(), state: '', city: '' };
+    userProfile = { name: '', photo: null, since: new Date().toISOString() };
     tempProfilePhoto = null;
     localStorage.setItem('geoalerta_profile', JSON.stringify(userProfile));
     renderProfileAvatar();
     closeProfileModal();
-    clearLocationHighlight();
   }
 
   // ---------- Mapa ----------
@@ -839,137 +809,12 @@
     currentLayerKey = key;
     map.removeLayer(currentTileLayer);
     currentTileLayer = L.tileLayer(TILE_LAYERS[key].url, { maxZoom: 19, attribution: TILE_LAYERS[key].attribution }).addTo(map);
-    if (riversLayer) riversLayer.bringToFront();
   }
   // Alterna diretamente entre o mapa normal (no tema atual) e o mapa de satélite —
   // sem passar por uma etapa intermediária de claro/escuro.
   function toggleLayer() {
     setLayer(currentLayerKey === 'satellite' ? currentTheme : 'satellite');
   }
-
-  // ---------- Rios em destaque (azul claro), carregado automaticamente ao abrir o mapa ----------
-  const RIVER_COLOR = '#8fa3ad';
-  const OVERPASS_ENDPOINTS = [
-    'https://overpass-api.de/api/interpreter',
-    'https://overpass.kumi.systems/api/interpreter'
-  ];
-  let riversLayer = null;
-
-  async function fetchOverpass(query) {
-    for (const endpoint of OVERPASS_ENDPOINTS) {
-      try {
-        const resp = await fetch(endpoint, { method: 'POST', body: query });
-        if (!resp.ok) continue;
-        return await resp.json();
-      } catch (e) { /* tenta o próximo espelho */ }
-    }
-    return null;
-  }
-
-  async function loadRivers() {
-    const bbox = '-26.55,-49.05,-26.05,-48.60'; // sul,oeste,norte,leste — região de Joinville/SC
-    const query = `[out:json][timeout:25];(way["waterway"~"^(river|stream|canal)$"](${bbox}););out geom;`;
-    const data = await fetchOverpass(query);
-    if (!data) { console.warn('Não foi possível carregar os rios (Overpass indisponível).'); return; }
-
-    riversLayer = L.layerGroup().addTo(map);
-    (data.elements || []).forEach(el => {
-      if (el.type !== 'way' || !el.geometry || el.geometry.length < 2) return;
-      const latlngs = el.geometry.map(pt => [pt.lat, pt.lon]);
-      const isMainRiver = el.tags && el.tags.waterway === 'river';
-      const baseWeight = isMainRiver ? 4.2 : 2.6;
-
-      // Camada de brilho por baixo (efeito destaque, como um marca-texto)
-      L.polyline(latlngs, {
-        color: RIVER_COLOR, weight: baseWeight + 5, opacity: 0.25,
-        lineCap: 'round', lineJoin: 'round', interactive: false
-      }).addTo(riversLayer);
-
-      // Linha principal, mais nítida
-      L.polyline(latlngs, {
-        color: RIVER_COLOR, weight: baseWeight, opacity: 0.95,
-        lineCap: 'round', lineJoin: 'round', interactive: false
-      }).addTo(riversLayer);
-    });
-  }
-  loadRivers();
-  map.on('zoomend', () => { if (riversLayer) riversLayer.bringToFront(); });
-
-  // ---------- Destaque do estado/cidade do usuário (limites administrativos) ----------
-  const BOUNDARY_HIGHLIGHT_COLOR = '#0a84ff';
-  const BOUNDARY_NEUTRAL_COLOR = '#ffffff';
-  let boundaryOtherLayer = null;   // limites de outras cidades/estados (branco)
-  let boundaryUserLayer = null;    // limite do estado/cidade do usuário (azul)
-
-  function clearLocationHighlight() {
-    if (boundaryOtherLayer) { map.removeLayer(boundaryOtherLayer); boundaryOtherLayer = null; }
-    if (boundaryUserLayer) { map.removeLayer(boundaryUserLayer); boundaryUserLayer = null; }
-  }
-
-  async function fetchNominatim(params) {
-    try {
-      const url = 'https://nominatim.openstreetmap.org/search?' + new URLSearchParams({
-        format: 'json', polygon_geojson: '1', addressdetails: '1', limit: '1', country: 'Brazil', ...params
-      });
-      const resp = await fetch(url, { headers: { 'Accept-Language': 'pt-BR' } });
-      if (!resp.ok) return null;
-      const data = await resp.json();
-      return (data && data[0]) || null;
-    } catch (e) { return null; }
-  }
-
-  async function highlightUserLocation() {
-    clearLocationHighlight();
-    const ufName = (BRAZIL_STATES.find(([uf]) => uf === userProfile.state) || [])[1];
-    if (!ufName && !userProfile.city) return;
-
-    // Limite (estado e/ou cidade) do usuário, em azul
-    let userResult = null;
-    if (userProfile.city) {
-      userResult = await fetchNominatim(ufName ? { city: userProfile.city, state: ufName } : { city: userProfile.city });
-    }
-    if (!userResult && ufName) {
-      userResult = await fetchNominatim({ state: ufName });
-    }
-    if (!userResult || !userResult.geojson) return;
-
-    boundaryUserLayer = L.geoJSON(userResult.geojson, {
-      style: { color: BOUNDARY_HIGHLIGHT_COLOR, weight: 3, fillColor: BOUNDARY_HIGHLIGHT_COLOR, fillOpacity: 0.08 }
-    }).addTo(map);
-    boundaryUserLayer.bringToFront();
-
-    // Limites vizinhos (outras cidades/estados), em branco, dentro da área visível do destaque
-    const bounds = boundaryUserLayer.getBounds();
-    if (bounds.isValid()) {
-      map.fitBounds(bounds, { maxZoom: userProfile.city ? 12 : 8 });
-      loadNeighborBoundaries(bounds, userResult.osm_id);
-    }
-  }
-
-  async function loadNeighborBoundaries(bounds, excludeOsmId) {
-    const sw = bounds.getSouthWest(), ne = bounds.getNorthEast();
-    const bbox = `${sw.lat},${sw.lng},${ne.lat},${ne.lng}`;
-    const level = userProfile.city ? 8 : 4; // 8 = município, 4 = estado
-    const query = `[out:json][timeout:25];(relation["boundary"="administrative"]["admin_level"="${level}"](${bbox}););out geom;`;
-    const data = await fetchOverpass(query);
-    if (!data) return;
-
-    if (boundaryOtherLayer) map.removeLayer(boundaryOtherLayer);
-    boundaryOtherLayer = L.layerGroup().addTo(map);
-    (data.elements || []).forEach(el => {
-      if (el.id === excludeOsmId) return; // não redesenha o limite do próprio usuário
-      if (!el.members) return;
-      el.members.filter(m => m.type === 'way' && m.geometry).forEach(m => {
-        L.polyline(m.geometry.map(pt => [pt.lat, pt.lon]), {
-          color: BOUNDARY_NEUTRAL_COLOR, weight: 1.2, opacity: 0.7, interactive: false
-        }).addTo(boundaryOtherLayer);
-      });
-    });
-    boundaryOtherLayer.bringToBack();
-    if (boundaryUserLayer) boundaryUserLayer.bringToFront();
-  }
-
-  if (userProfile.state || userProfile.city) highlightUserLocation();
 
   // ---------- Tema claro/escuro ----------
   let currentTheme = 'dark';
@@ -1969,7 +1814,7 @@
     refreshPlaceModalPreview();
     document.getElementById('placeType').value = 'casa';
     document.getElementById('placeNameInput').value = PLACE_TYPES.casa.label;
-    document.getElementById('placeRadiusInput').value = 650;
+    document.getElementById('placeRadiusInput').value = 500;
     document.getElementById('placeModal').classList.add('open');
   }
   function closePlaceModal() {
