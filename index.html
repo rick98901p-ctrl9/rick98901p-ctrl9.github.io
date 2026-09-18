@@ -4,7 +4,16 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Mapa de Ocorrências</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<meta name="description" content="Mapa colaborativo de alagamentos, inundações e outras ocorrências em Joinville/SC." />
+<meta name="theme-color" content="#0a84ff" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icon-192.png" type="image/png" />
+<link rel="apple-touch-icon" href="./icon-192.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="GeoAlerta" />
+<meta name="mobile-web-app-capable" content="yes" />
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.10.0/dist/maplibre-gl.css" />
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
   html, body { width: 100%; height: 100%; overflow: hidden; }
@@ -293,6 +302,8 @@
   .map-wrap { position: relative; flex: 1; height: 100%; }
   #map { width: 100%; height: 100%; z-index: 1; cursor: grab; }
   #map.picking-mode { cursor: crosshair; }
+  #map.picking-mode .maplibregl-canvas,
+  #map.picking-mode .maplibregl-canvas-container { cursor: crosshair !important; }
 
   .sidebar-reopen-btn {
     position: absolute; top: 16px; left: 16px; z-index: 950;
@@ -398,14 +409,28 @@
   .marker-pin .icon { width: 16px; height: 16px; transform: rotate(45deg); }
 
   /* ---------- Popup do mapa (CEP da ocorrência) ---------- */
-  .leaflet-popup-content-wrapper {
+  .maplibregl-popup-content {
     background-color: var(--bg-card);
     color: var(--text-primary);
     border-radius: 12px;
     box-shadow: 0 4px 16px var(--shadow);
+    padding: 10px 12px;
+    font-size: 13px;
   }
-  .leaflet-popup-tip { background-color: var(--bg-card); }
-  .leaflet-popup-content { margin: 10px 12px; }
+  .maplibregl-popup-anchor-bottom .maplibregl-popup-tip { border-top-color: var(--bg-card); }
+  .maplibregl-popup-anchor-top .maplibregl-popup-tip { border-bottom-color: var(--bg-card); }
+  .maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--bg-card); }
+  .maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--bg-card); }
+  .maplibregl-popup-close-button { color: var(--text-secondary); font-size: 16px; padding: 0 6px; }
+  .maplibregl-ctrl-attrib { font-size: 10.5px; }
+  .maplibregl-marker { cursor: pointer; }
+
+  /* Ponto da localização do usuário (substitui o circleMarker do Leaflet) */
+  .user-location-dot {
+    width: 18px; height: 18px; border-radius: 50%;
+    background-color: #0a84ff; border: 3px solid #ffffff;
+    box-shadow: 0 0 0 4px rgba(10,132,255,0.25), 0 2px 6px rgba(0,0,0,0.45);
+  }
   .occurrence-popup-title { font-weight: 700; font-size: 13.5px; margin-bottom: 3px; }
   .occurrence-popup-cep { font-size: 12.5px; color: var(--text-secondary); }
   .occurrence-popup-bairro { font-size: 12px; color: var(--text-tertiary); margin-top: 1px; }
@@ -415,10 +440,6 @@
     .sidebar.collapsed { margin-left: -88vw; }
   }
 </style>
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icon-192.png">
-<link rel="apple-touch-icon" href="./icon-192.png">
-<meta name="theme-color" content="#0a84ff">
 </head>
 <body>
 
@@ -487,7 +508,7 @@
       </div>
     </div>
 
-    <div class="map-attribution">© OpenStreetMap contributors</div>
+    <div class="map-attribution">© OpenStreetMap contributors · Tiles: OpenFreeMap / OpenMapTiles</div>
   </div>
 </div>
 
@@ -598,8 +619,14 @@
   </div>
 </div>
 
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
+<script type="module">
+  // ---------------------------------------------------------------
+  // Arquitetura do mapa:
+  //   OpenStreetMap (dados) → OpenFreeMap (estilos/tiles)
+  //   → MapLibre GL JS (renderização) → GeoAlerta (aplicação e dados)
+  // ---------------------------------------------------------------
+  import * as maplibregl from 'https://unpkg.com/maplibre-gl@6.10.0/dist/maplibre-gl.mjs';
+
   // ---------- Ícones (line art, sem preenchimento) ----------
   const ICONS = {
     target: '<svg class="icon" viewBox="0 0 24 24" stroke-width="1.6" stroke-linecap="round"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><line x1="12" y1="1.5" x2="12" y2="4.5"/><line x1="12" y1="19.5" x2="12" y2="22.5"/><line x1="1.5" y1="12" x2="4.5" y2="12"/><line x1="19.5" y1="12" x2="22.5" y2="12"/></svg>',
@@ -794,22 +821,60 @@
   }
 
   // ---------- Mapa ----------
-  const TILE_LAYERS = {
-    dark:      { url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',  attribution: '© OpenStreetMap & CartoDB' },
-    light:     { url: 'https://services.arcgisonline.com/arcgis/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri — Light Gray Canvas' },
-    satellite: { url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', attribution: 'Tiles © Esri' }
+  // Estilos servidos pelo OpenFreeMap (dados do OpenStreetMap / OpenMapTiles).
+  const MAP_STYLES = {
+    dark:  'https://tiles.openfreemap.org/styles/dark',
+    light: 'https://tiles.openfreemap.org/styles/liberty'
   };
 
+  // Modo satélite: imagens de satélite como source/layer raster nativa do MapLibre
+  // (não é o mapa principal — o mapa principal é sempre o OpenFreeMap).
+  const SATELLITE_STYLE = {
+    version: 8,
+    sources: {
+      'satellite-raster': {
+        type: 'raster',
+        tiles: ['https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}'],
+        tileSize: 256,
+        maxzoom: 19,
+        attribution: 'Imagens de satélite · Dados de mapa © OpenStreetMap contributors'
+      }
+    },
+    layers: [
+      { id: 'satellite-raster-layer', type: 'raster', source: 'satellite-raster' }
+    ]
+  };
+
+  // Coordenadas internas do projeto continuam em [latitude, longitude].
   const JOINVILLE_CENTER = [-26.30444, -48.84556];
-  const map = L.map('map', { zoomControl: false }).setView(JOINVILLE_CENTER, 13);
+
+  const map = new maplibregl.Map({
+    container: 'map',
+    style: MAP_STYLES.dark,
+    center: [JOINVILLE_CENTER[1], JOINVILLE_CENTER[0]], // MapLibre usa [lon, lat]
+    zoom: 13,
+    attributionControl: true
+  });
+
   let currentLayerKey = 'dark';
-  let currentTileLayer = L.tileLayer(TILE_LAYERS.dark.url, { maxZoom: 19, attribution: TILE_LAYERS.dark.attribution }).addTo(map);
+
+  function styleFor(key) {
+    return key === 'satellite' ? SATELLITE_STYLE : MAP_STYLES[key];
+  }
 
   function setLayer(key) {
+    if (key === currentLayerKey) return;
     currentLayerKey = key;
-    map.removeLayer(currentTileLayer);
-    currentTileLayer = L.tileLayer(TILE_LAYERS[key].url, { maxZoom: 19, attribution: TILE_LAYERS[key].attribution }).addTo(map);
+    map.setStyle(styleFor(key));
   }
+
+  // Sempre que o estilo do mapa é (re)carregado, as sources/layers próprias do
+  // GeoAlerta precisam ser recriadas (os marcadores DOM sobrevivem sozinhos).
+  let mapStyleReady = false;
+  map.on('style.load', () => {
+    mapStyleReady = true;
+    renderPlaceCircles();
+  });
   // Alterna diretamente entre o mapa normal (no tema atual) e o mapa de satélite —
   // sem passar por uma etapa intermediária de claro/escuro.
   function toggleLayer() {
@@ -829,8 +894,8 @@
   document.getElementById('themeToggleBtn').onclick = () => applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
   document.getElementById('locateBtn').onclick = () => locateMe();
   document.getElementById('layerBtn').onclick = () => toggleLayer();
-  document.getElementById('zoomInBtn').onclick = () => map.zoomIn();
-  document.getElementById('zoomOutBtn').onclick = () => map.zoomOut();
+  document.getElementById('zoomInBtn').onclick = () => map.zoomIn({ duration: 300 });
+  document.getElementById('zoomOutBtn').onclick = () => map.zoomOut({ duration: 300 });
 
   // ---------- Minimizar / desminimizar barra lateral ----------
   function setSidebarCollapsed(collapsed) {
@@ -876,59 +941,127 @@
     localStorage.setItem('geoalerta_notified_pairs', JSON.stringify(Array.from(notifiedPairs)));
   }
 
+  // ---------- Utilitários de marcador (MapLibre) ----------
+  // Cria o elemento DOM usado como ícone do marcador (substitui L.divIcon).
+  function markerElement(html, size) {
+    const el = document.createElement('div');
+    el.style.width = size + 'px';
+    el.style.height = size + 'px';
+    el.innerHTML = html;
+    return el;
+  }
+
+  // Cria um marcador MapLibre a partir de lat/lon (a ordem é invertida só aqui).
+  function createMarker(lat, lon, element) {
+    return new maplibregl.Marker({ element, anchor: 'bottom' }).setLngLat([lon, lat]).addTo(map);
+  }
+
+  function setMarkerVisible(marker, show) {
+    if (!marker) return;
+    if (show && !marker.__onMap) { marker.addTo(map); marker.__onMap = true; }
+    if (!show && marker.__onMap) { marker.remove(); marker.__onMap = false; }
+  }
+  function markerIsVisible(marker) { return !!(marker && marker.__onMap); }
+  function removeMarker(marker) {
+    if (!marker) return;
+    marker.remove();
+    marker.__onMap = false;
+  }
+
   // Vincula ao marcador um popup exibido diretamente no mapa com a rua e o CEP da ocorrência
   function bindOccurrencePopup(marker, item) {
     const street = item.street || 'Rua não identificada';
     const cep = item.cep || 'não informado';
     const bairroLine = item.bairro ? `<div class="occurrence-popup-bairro">${item.bairro}${item.cidade ? ' · ' + item.cidade : ''}</div>` : '';
-    marker.bindPopup(`
+    marker.setPopup(new maplibregl.Popup({ offset: 34, closeButton: true }).setHTML(`
       <div class="occurrence-popup-title">${street}</div>
       <div class="occurrence-popup-cep">CEP: ${cep}</div>
       ${bairroLine}
-    `);
+    `));
     return marker;
   }
 
+  // Continua existindo, mas agora devolve um elemento DOM para new maplibregl.Marker({ element })
   function divIcon(category) {
     const meta = CATEGORY_META[category] || CATEGORY_META.default;
-    return L.divIcon({
-      className: '',
-      html: `<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 32],
-      popupAnchor: [0, -28]
-    });
+    return markerElement(`<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`, 32);
   }
 
   // ---------- Marcadores e círculos dos locais salvos ----------
   function placeDivIcon(type) {
     const meta = PLACE_TYPES[type] || PLACE_TYPES.outro;
-    return L.divIcon({
-      className: '',
-      html: `<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`,
-      iconSize: [30, 30],
-      iconAnchor: [15, 30],
-      popupAnchor: [0, -26]
+    return markerElement(`<div class="marker-pin" style="color:${meta.color}">${ICONS[meta.icon]}</div>`, 30);
+  }
+
+  // Gera um polígono aproximando um círculo de raio em metros (para a layer do MapLibre)
+  function circlePolygon(lat, lon, radiusM, steps) {
+    steps = steps || 64;
+    const coords = [];
+    const latR = radiusM / 110574;
+    const lonR = radiusM / (111320 * Math.cos(lat * Math.PI / 180));
+    for (let i = 0; i <= steps; i++) {
+      const theta = (i / steps) * 2 * Math.PI;
+      coords.push([lon + lonR * Math.cos(theta), lat + latR * Math.sin(theta)]);
+    }
+    return coords;
+  }
+
+  const PLACE_CIRCLE_SOURCE = 'geoalerta-place-circles';
+
+  function placeCirclesGeoJson() {
+    return {
+      type: 'FeatureCollection',
+      features: placeCircles.map(pc => pc.circle)
+    };
+  }
+
+  function syncPlaceCircleSource() {
+    if (!mapStyleReady || !map.isStyleLoaded()) return;
+    const data = placeCirclesGeoJson();
+    const src = map.getSource(PLACE_CIRCLE_SOURCE);
+    if (src) { src.setData(data); return; }
+
+    map.addSource(PLACE_CIRCLE_SOURCE, { type: 'geojson', data });
+    map.addLayer({
+      id: PLACE_CIRCLE_SOURCE + '-fill',
+      type: 'fill',
+      source: PLACE_CIRCLE_SOURCE,
+      paint: { 'fill-color': ['get', 'color'], 'fill-opacity': 0.08 }
+    });
+    map.addLayer({
+      id: PLACE_CIRCLE_SOURCE + '-line',
+      type: 'line',
+      source: PLACE_CIRCLE_SOURCE,
+      paint: { 'line-color': ['get', 'color'], 'line-width': 1.5 }
     });
   }
 
   function renderPlaceCircles() {
-    placeCircles.forEach(pc => { map.removeLayer(pc.circle); map.removeLayer(pc.marker); });
+    placeCircles.forEach(pc => removeMarker(pc.marker));
     placeCircles = [];
+
     savedPlaces.forEach(place => {
       const type = PLACE_TYPES[place.type] || PLACE_TYPES.outro;
-      const circle = L.circle([place.lat, place.lon], {
-        radius: place.radius, color: type.color, weight: 1.5,
-        fillColor: type.color, fillOpacity: 0.08
-      }).addTo(map);
-      const marker = L.marker([place.lat, place.lon], { icon: placeDivIcon(place.type) }).addTo(map);
-      marker.bindPopup(`
+
+      // "circle" agora é a feature GeoJSON do raio de alerta desse local
+      const circle = {
+        type: 'Feature',
+        properties: { id: place.id, color: type.color, radius: place.radius },
+        geometry: { type: 'Polygon', coordinates: [circlePolygon(place.lat, place.lon, place.radius)] }
+      };
+
+      const marker = createMarker(place.lat, place.lon, placeDivIcon(place.type));
+      marker.__onMap = true;
+      marker.setPopup(new maplibregl.Popup({ offset: 32, closeButton: true }).setHTML(`
         <div class="occurrence-popup-title">${place.label}</div>
         <div class="occurrence-popup-cep">Raio de alerta: ${place.radius} m</div>
-      `);
-      marker.on('click', () => focusPlace(place.id));
+      `));
+      marker.getElement().addEventListener('click', () => focusPlace(place.id));
+
       placeCircles.push({ place, circle, marker });
     });
+
+    syncPlaceCircleSource();
   }
 
   // ---------- Verificação e notificação de ocorrências dentro do raio de um local ----------
@@ -977,7 +1110,7 @@
   }
 
   function clearPoiMarkers() {
-    poiMarkers.forEach(m => map.removeLayer(m));
+    poiMarkers.forEach(m => removeMarker(m));
     poiMarkers = [];
   }
 
@@ -1140,16 +1273,12 @@
 
   function showAllSheetMarkers() {
     sheetMarkerRefs.forEach(ref => {
-      const show = visibleCategories.has(ref.item.category);
-      if (show && !map.hasLayer(ref.marker)) map.addLayer(ref.marker);
-      if (!show && map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
+      setMarkerVisible(ref.marker, visibleCategories.has(ref.item.category));
     });
   }
   function showOnlySheetCategory(category) {
     sheetMarkerRefs.forEach(ref => {
-      const show = ref.item.category === category;
-      if (show && !map.hasLayer(ref.marker)) map.addLayer(ref.marker);
-      if (!show && map.hasLayer(ref.marker)) map.removeLayer(ref.marker);
+      setMarkerVisible(ref.marker, ref.item.category === category);
     });
   }
 
@@ -1197,15 +1326,17 @@
   document.getElementById('filterBtn').innerHTML = ICONS.filterIcon;
 
   function renderSheetMarkers() {
-    sheetMarkerRefs.forEach(ref => map.removeLayer(ref.marker));
+    sheetMarkerRefs.forEach(ref => removeMarker(ref.marker));
     sheetMarkerRefs = [];
     sheetOccurrences.forEach(item => {
-      const marker = L.marker([item.lat, item.lon], { icon: divIcon(item.category) }).addTo(map);
+      const marker = createMarker(item.lat, item.lon, divIcon(item.category));
+      marker.__onMap = true;
       marker.__occurrenceId = item.id;
       bindOccurrencePopup(marker, item);
-      marker.on('click', () => focusOccurrence(item));
+      marker.getElement().addEventListener('click', () => focusOccurrence(item));
       sheetMarkerRefs.push({ item, marker });
     });
+    refreshMarkerVisibility();
   }
 
   // ---------- Localização a partir do CEP (as coordenadas da planilha são ignoradas) ----------
@@ -1444,7 +1575,7 @@
 
   // ---------- Menu principal (tipos de ocorrência) ----------
   function resetSidebar() {
-    if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
+    if (activeMarker) { removeMarker(activeMarker); activeMarker = null; }
     clearPoiMarkers();
     activeCategoryFilter = null;
     showAllSheetMarkers();
@@ -1514,15 +1645,48 @@
 
   // ---------- Filtro por categoria (dados reais da planilha) ----------
   function selectFilter(category) {
-    if (category === 'all') { resetSidebar(); return; }
+    if (category === 'all') { showAllOccurrencesScreen(); return; }
     showCategoryFromSheet(category);
+  }
+
+  function showAllOccurrencesScreen() {
+    activeCategoryFilter = null;
+    const meta = CATEGORY_META.all;
+    const container = document.getElementById('sidebarContent');
+    const items = sheetOccurrences.concat(reports);
+    showAllSheetMarkers();
+
+    const backRow = `
+      <div class="back-row" onclick="resetSidebar()">
+        <div class="icon-btn">${ICONS.back}</div>
+        <div class="back-row-title" style="color:${meta.color}">${ICONS[meta.icon]}${meta.label}</div>
+      </div>`;
+
+    if (sheetLoading) {
+      container.innerHTML = backRow + `<div class="empty-state">${ICONS[meta.icon]}<span>Carregando ocorrências da planilha...</span></div>`;
+      return;
+    }
+
+    if (items.length === 0) {
+      container.innerHTML = backRow + `<div class="empty-state">${ICONS[meta.icon]}<span>Nenhuma ocorrência registrada ainda.</span></div>`;
+      return;
+    }
+
+    const center = map.getCenter();
+    const cardsHtml = items.map(item => occurrenceCardHtml(item, formatDistance(distanceKm(center.lat, center.lng, item.lat, item.lon)))).join('');
+
+    container.innerHTML = `
+      ${backRow}
+      <div class="section-note">Todas as ocorrências registradas.</div>
+      <div class="results-list">${cardsHtml}</div>
+    `;
   }
 
   function showCategoryFromSheet(category) {
     activeCategoryFilter = category;
     const meta = CATEGORY_META[category];
     const container = document.getElementById('sidebarContent');
-    const items = sheetOccurrences.filter(o => o.category === category);
+    const items = sheetOccurrences.concat(reports).filter(o => o.category === category);
     showOnlySheetCategory(category);
 
     const backRow = `
@@ -1559,9 +1723,10 @@
     const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
     const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`;
 
-    map.flyTo([lat, lon], 16, { duration: 1.1 });
-    if (activeMarker) map.removeLayer(activeMarker);
-    activeMarker = L.marker([lat, lon], { icon: divIcon(item.category) }).addTo(map);
+    map.flyTo({ center: [lon, lat], zoom: 16, duration: 1100 });
+    if (activeMarker) removeMarker(activeMarker);
+    activeMarker = createMarker(lat, lon, divIcon(item.category));
+    activeMarker.__onMap = true;
     currentReportTarget = { lat, lon, street: title, cep: item.cep || null, title, subtitle };
 
     const container = document.getElementById('sidebarContent');
@@ -1584,11 +1749,12 @@
     const meta = CATEGORY_META[item.category] || CATEGORY_META.default;
     const timestamp = item.timestamp instanceof Date ? item.timestamp : new Date(item.timestamp);
 
-    map.flyTo([item.lat, item.lon], 16, { duration: 1.1 });
-    if (activeMarker) map.removeLayer(activeMarker);
-    activeMarker = L.marker([item.lat, item.lon], { icon: divIcon(item.category) }).addTo(map);
+    map.flyTo({ center: [item.lon, item.lat], zoom: 16, duration: 1100 });
+    if (activeMarker) removeMarker(activeMarker);
+    activeMarker = createMarker(item.lat, item.lon, divIcon(item.category));
+    activeMarker.__onMap = true;
     bindOccurrencePopup(activeMarker, item);
-    activeMarker.openPopup();
+    if (!activeMarker.getPopup().isOpen()) activeMarker.togglePopup();
 
     const container = document.getElementById('sidebarContent');
     container.innerHTML = `
@@ -1654,14 +1820,14 @@
   }
 
   function removeOccurrence(id) {
-    if (activeMarker) { map.removeLayer(activeMarker); activeMarker = null; }
+    if (activeMarker) { removeMarker(activeMarker); activeMarker = null; }
 
     // Ocorrências reportadas pelo usuário
     const reportIdx = reports.findIndex(r => r.id === id);
     if (reportIdx > -1) reports.splice(reportIdx, 1);
     const markerIdx = reportMarkers.findIndex(m => m.__occurrenceId === id);
     if (markerIdx > -1) {
-      map.removeLayer(reportMarkers[markerIdx]);
+      removeMarker(reportMarkers[markerIdx]);
       reportMarkers.splice(markerIdx, 1);
     }
 
@@ -1670,7 +1836,7 @@
     if (sheetIdx > -1) sheetOccurrences.splice(sheetIdx, 1);
     const refIdx = sheetMarkerRefs.findIndex(ref => ref.item.id === id);
     if (refIdx > -1) {
-      map.removeLayer(sheetMarkerRefs[refIdx].marker);
+      removeMarker(sheetMarkerRefs[refIdx].marker);
       sheetMarkerRefs.splice(refIdx, 1);
     }
 
@@ -1719,7 +1885,7 @@
 
   map.on('click', async (e) => {
     if (isPickingPlace) {
-      const { lat, lng } = e.latlng;
+      const { lat, lng } = e.lngLat;
       cancelPickPlace();
       showBanner('Buscando endereço do local selecionado...', false);
       const addr = await reverseGeocode(lat, lng);
@@ -1729,7 +1895,7 @@
       return;
     }
     if (!isPicking) return;
-    const { lat, lng } = e.latlng;
+    const { lat, lng } = e.lngLat;
     cancelPickLocation();
     showBanner('Buscando endereço do local selecionado...', false);
     const addr = await reverseGeocode(lat, lng);
@@ -1781,10 +1947,11 @@
     };
     reports.push(report);
 
-    const marker = L.marker([report.lat, report.lon], { icon: divIcon(category) }).addTo(map);
+    const marker = createMarker(report.lat, report.lon, divIcon(category));
+    marker.__onMap = true;
     marker.__occurrenceId = report.id;
     bindOccurrencePopup(marker, report);
-    marker.on('click', () => focusOccurrence(report));
+    marker.getElement().addEventListener('click', () => focusOccurrence(report));
     reportMarkers.push(marker);
 
     checkOccurrenceAgainstAllPlaces(report);
@@ -1871,7 +2038,7 @@
 
     closePlaceModal();
     showBanner(`"${place.label}" salvo com raio de alerta de ${radius} m.`, false);
-    map.flyTo([place.lat, place.lon], 15, { duration: 1.1 });
+    map.flyTo({ center: [place.lon, place.lat], zoom: 15, duration: 1100 });
     resetSidebar();
   }
 
@@ -1880,7 +2047,7 @@
     const place = savedPlaces.find(p => p.id === id);
     if (!place) return;
     const type = PLACE_TYPES[place.type] || PLACE_TYPES.outro;
-    map.flyTo([place.lat, place.lon], 15, { duration: 1.1 });
+    map.flyTo({ center: [place.lon, place.lat], zoom: 15, duration: 1100 });
 
     const container = document.getElementById('sidebarContent');
     container.innerHTML = `
@@ -1946,13 +2113,34 @@
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        map.flyTo([latitude, longitude], 16, { duration: 1.1 });
-        if (userMarker) map.removeLayer(userMarker);
-        userMarker = L.circleMarker([latitude, longitude], { radius: 8, color: '#0a84ff', fillColor: '#0a84ff', fillOpacity: 0.9, weight: 3 }).addTo(map).bindPopup('Você está aqui');
+        map.flyTo({ center: [longitude, latitude], zoom: 16, duration: 1100 });
+        if (userMarker) removeMarker(userMarker);
+        const dot = document.createElement('div');
+        dot.className = 'user-location-dot';
+        userMarker = new maplibregl.Marker({ element: dot, anchor: 'center' })
+          .setLngLat([longitude, latitude])
+          .setPopup(new maplibregl.Popup({ offset: 16 }).setHTML('Você está aqui'))
+          .addTo(map);
+        userMarker.__onMap = true;
       },
       () => showBanner('Não foi possível obter sua localização.', true)
     );
   }
+
+  // ---------- Exposição global ----------
+  // Como todo o código agora vive dentro de um <script type="module">, as funções
+  // usadas nos atributos onclick/onchange do HTML precisam ser publicadas em window.
+  Object.assign(window, {
+    closeFilterModal, closePlaceModal, closeProfileModal, closeReportModal,
+    confirmRemoveOccurrence, confirmRemovePlace, deleteProfile, focusOccurrence,
+    focusPlace, handleKeyDown, handlePlaceTypeChange, handleProfilePhotoChange,
+    handleSearchInput, openFilterModal, openPlaceModalWithCurrentLocation,
+    openProfileModal, removeProfilePhoto, reportAtCurrentTarget, resetSidebar,
+    savePlace, saveProfile, selectFilter, selectSearchResult,
+    setAllCategoriesVisible, setSidebarCollapsed, startPickLocation, startPickPlace,
+    submitReport, toggleCategoryVisible, triggerSearchFromButton, updatePlaceRadius,
+    usePlaceCurrentLocation
+  });
 
   // ---------- Inicialização ----------
   applyTheme('dark');
@@ -1961,9 +2149,11 @@
   initSheetData();
 </script>
 <script>
+  // ---------- PWA: registro do service worker ----------
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('./service-worker.js').catch((e) => console.warn('SW falhou:', e));
+      navigator.serviceWorker.register('./service-worker.js')
+        .catch(err => console.warn('Falha ao registrar o service worker:', err));
     });
   }
 </script>
